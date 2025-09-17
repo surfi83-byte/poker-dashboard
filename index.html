@@ -1,0 +1,1017 @@
+<button onclick="updatePlayer('${p.id}', 'paid', true)" class="py-2 px-3 rounded-lg text-sm font-bold border-2 transition-all ${p.paid ? 'bg-green-600 border-green-400 text-white shadow-lg' : 'bg-emerald-900/30 border-emerald-700 text-emerald-300 hover:bg-green-600/20'}">
+                                                    ✅ Pagado
+                                                </button>
+                                                <button onclick="updatePlayer('${p.id}', 'paid', false)" class="py-2 px-3 rounded-lg text-sm font-bold border-2 transition-all ${!p.paid ? 'bg-red-600 border-red-400 text-white shadow-lg' : 'bg-emerald-900/30 border-emerald-700 text-emerald-300 hover:bg-red-600/20'}">
+                                                    ❌ No pagado
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        // Renderizar partidas
+        function renderMatches() {
+            return `
+                <section class="space-y-6">
+                    ${appData.matchDays.map((md, dayIndex) => `
+                        <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                            <header class="mb-4">
+                                <h2 class="text-lg font-bold text-emerald-100">${md.label}</h2>
+                                <p class="text-sm opacity-80 text-emerald-200 mt-1">${md.isFloating ? '🎈 Partida Flotante • Dos mesas por fecha' : '📅 Partida Oficial • Dos mesas por fecha'}</p>
+                            </header>
+                            
+                            ${md.isFloating ? `
+                                <div class="flex items-center gap-3 mb-4 p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                                    <span class="text-sm font-medium">📅 Fecha flotante:</span>
+                                    <input type="date" value="${md.dateISO}" onchange="setMatchDayDate(${dayIndex}, this.value)" class="bg-emerald-800/60 rounded-lg p-2 text-sm border border-emerald-600 focus:border-emerald-400 focus:outline-none">
+                                    <button onclick="removeFloatingMatch(${dayIndex})" class="ml-auto px-3 py-2 text-xs rounded-lg bg-red-600 hover:bg-red-500 border border-red-400 font-semibold transition-all">
+                                        🗑️ Eliminar
+                                    </button>
+                                </div>
+                            ` : ''}
+
+                            <div class="flex items-center gap-3 mb-4 p-3 bg-emerald-800/30 rounded-lg">
+                                <span class="text-sm font-medium">🏠 Anfitrión (ambas mesas):</span>
+                                <select onchange="setHost(${dayIndex}, this.value)" class="flex-1 bg-emerald-800/60 rounded-lg p-2 text-sm border border-emerald-600 focus:border-emerald-400 focus:outline-none">
+                                    <option value="">— Seleccionar anfitrión —</option>
+                                    ${appData.players.map(p => `
+                                        <option value="${p.id}" ${md.host === p.id ? 'selected' : ''}>${p.name}</option>
+                                    `).join('')}
+                                </select>
+                            </div>
+
+                            <div class="space-y-4">
+                                ${renderMesaEditor('🎯 Mesa 1', dayIndex, 'mesa1', md.mesa1)}
+                                ${renderMesaEditor('🎯 Mesa 2', dayIndex, 'mesa2', md.mesa2)}
+                            </div>
+                        </div>
+                    `).join('')}
+                </section>
+            `;
+        }
+
+        // Renderizar editor de mesa
+        function renderMesaEditor(title, dayIndex, mesaKey, mesa) {
+            const ranks = [
+                { key: "first", label: "🥇 1º (6 pts)", color: "from-yellow-500/20 to-yellow-400/20 border-yellow-400/50" },
+                { key: "second", label: "🥈 2º (3 pts)", color: "from-gray-400/20 to-gray-300/20 border-gray-400/50" },
+                { key: "third", label: "🥉 3º (1 pt)", color: "from-amber-600/20 to-amber-500/20 border-amber-500/50" },
+            ];
+
+            return `
+                <div class="rounded-xl border border-emerald-600/50 p-4 bg-gradient-to-br from-emerald-900/40 to-emerald-800/40 shadow-lg">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-bold text-emerald-100 text-lg">${title}</h3>
+                        <label class="text-xs px-3 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 cursor-pointer font-semibold transition-all shadow-md">
+                            📷 Subir foto
+                            <input type="file" accept="image/*" class="hidden" onchange="handleMesaPhoto(${dayIndex}, '${mesaKey}', event)">
+                        </label>
+                    </div>
+
+                    ${mesa.photo ? `
+                        <div class="mb-4 rounded-lg overflow-hidden border-2 border-emerald-600/50 bg-black shadow-lg">
+                            <img src="${mesa.photo}" alt="Foto ${title}" class="w-full h-64 object-contain bg-emerald-950/50">
+                        </div>
+                    ` : ''}
+
+                    <div class="space-y-3">
+                        ${ranks.map(r => `
+                            <div class="p-3 rounded-lg bg-gradient-to-r border ${r.color}">
+                                <div class="flex items-center gap-3">
+                                    <label class="w-32 text-sm font-semibold text-white">${r.label}</label>
+                                    <select onchange="setPodium(${dayIndex}, '${mesaKey}', '${r.key}', this.value)" class="flex-1 bg-emerald-800/60 rounded-lg p-2 text-sm border border-emerald-600 focus:border-emerald-400 focus:outline-none text-white">
+                                        <option value="">— Seleccionar jugador —</option>
+                                        ${appData.players.map(p => `
+                                            <option value="${p.id}" ${mesa.podium[r.key] === p.id ? 'selected' : ''}>${p.name}</option>
+                                        `).join('')}
+                                    </select>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Renderizar partidas flotantes
+        function renderFloating() {
+            const floatingMatches = appData.matchDays.map((md, idx) => ({ md, idx })).filter(x => x.md.isFloating);
+            
+            return `
+                <section class="space-y-6">
+                    <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                        <header class="mb-4">
+                            <h2 class="text-lg font-bold text-emerald-100">🎈 Partidas Flotantes</h2>
+                            <p class="text-sm opacity-80 text-emerald-200 mt-1">Crea hasta 6 partidas adicionales al año</p>
+                        </header>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between p-4 bg-emerald-800/30 rounded-lg border border-emerald-700/50">
+                                <div>
+                                    <div class="font-semibold text-emerald-200">Partidas flotantes creadas</div>
+                                    <div class="text-sm opacity-80">
+                                        ${floatingMatches.length} de 6 máximo permitidas
+                                    </div>
+                                </div>
+                                <button onclick="addFloatingMatch()" ${floatingMatches.length >= 6 ? 'disabled' : ''} class="px-4 py-2 rounded-lg font-semibold transition-all ${floatingMatches.length >= 6 ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white shadow-lg'}">
+                                    ➕ Crear Partida Flotante
+                                </button>
+                            </div>
+
+                            ${floatingMatches.length === 0 ? `
+                                <div class="text-center p-8 text-emerald-300/80">
+                                    <div class="text-4xl mb-2">🎈</div>
+                                    <div class="font-medium">No hay partidas flotantes</div>
+                                    <div class="text-sm opacity-80">Crea una partida adicional cuando la necesites</div>
+                                </div>
+                            ` : `
+                                <div class="space-y-3">
+                                    <h3 class="font-semibold text-emerald-200 mb-3">Partidas flotantes activas:</h3>
+                                    ${floatingMatches.map(({ md, idx }) => `
+                                        <div class="flex items-center justify-between p-3 bg-blue-500/20 rounded-lg border border-blue-500/30">
+                                            <div class="flex items-center gap-3">
+                                                <span class="text-2xl">🎈</span>
+                                                <div>
+                                                    <div class="font-medium">${md.label}</div>
+                                                    <div class="text-xs opacity-80">
+                                                        ${md.host ? `Anfitrión: ${appData.players.find(p => p.id === md.host)?.name || 'Desconocido'}` : 'Sin anfitrión asignado'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                <button onclick="setTab('partidas')" class="text-xs px-3 py-1 rounded bg-emerald-600 hover:bg-emerald-500 transition-colors">
+                                                    ✏️ Editar
+                                                </button>
+                                                <button onclick="removeFloatingMatch(${idx})" class="text-xs px-3 py-1 rounded bg-red-600 hover:bg-red-500 transition-colors">
+                                                    🗑️ Eliminar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `}
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        // Renderizar reglas
+        function renderRules() {
+            return `
+                <section class="space-y-4 text-sm leading-relaxed">
+                    <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                        <header class="mb-4">
+                            <h2 class="text-lg font-bold text-emerald-100">🎯 REGLAS DEL TORNEO</h2>
+                        </header>
+                        <div class="space-y-4">
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>💰</span> Entrada
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• Costo: $50 USD</li>
+                                    <li>• 💳 Pago a: Eliuth Triana</li>
+                                    <li>• 🧾 Los participantes no acumularán puntos para la clasificación general hasta confirmar participación y pago</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>🃏</span> Participantes externos
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• 👥 Pueden jugar en las mesas (a discreción del anfitrión)</li>
+                                    <li>• 🏆 Acceden al premio de la mesa</li>
+                                    <li>• 🚫 No acumulan puntos para el torneo</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>📅</span> Fechas oficiales
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• 🗓 12 Septiembre</li>
+                                    <li>• 🗓 26 Septiembre</li>
+                                    <li>• 🗓 24 Octubre</li>
+                                    <li>• 🗓 21 Noviembre</li>
+                                    <li>• 🗓 12 Diciembre</li>
+                                    <li>• 🗓 30 Enero</li>
+                                    <li>• 🗓 27 Febrero</li>
+                                    <li>• 🗓 27 Marzo</li>
+                                    <li>• 🗓 24 Abril</li>
+                                    <li>• 🗓 29 Mayo</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>➕</span> Fechas adicionales
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• 🔄 Máximo 2 por mes</li>
+                                    <li>• 👥 Requiere mínimo 6 jugadores del torneo</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>🎉</span> Gran Final
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• 📍 Fecha: 12 de Junio</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>🏆</span> Sistema de puntuación
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• 🥇 1er lugar: 6 puntos</li>
+                                    <li>• 🥈 2do lugar: 3 puntos</li>
+                                    <li>• 🥉 3er lugar: 1 punto</li>
+                                    <li>• 📊 Se consideran las 12 mejores mesas</li>
+                                    <li>• ➕ Si no se llega a 12, se suman los puntos acumulados</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>🎖</span> Finalistas
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• 👑 Los 6 mejores jugadores acceden a la mesa final</li>
+                                    <li>• 🔄 Si alguien no puede asistir, entra el siguiente en la tabla</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>⚖️</span> Desempates
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>1️⃣ Veces en 1er lugar</li>
+                                    <li>2️⃣ Veces en 2do lugar</li>
+                                    <li>3️⃣ Veces en 3er lugar</li>
+                                    <li>🎩 Veces como anfitrión</li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <h3 class="font-bold text-emerald-200 mb-2 flex items-center gap-2">
+                                    <span>💵</span> Premios
+                                </h3>
+                                <ul class="space-y-1 text-emerald-100 ml-4">
+                                    <li>• 🏆 Ganador de la temporada: $xx.xx</li>
+                                    <li>• 🃏 Mesa de finalistas:</li>
+                                    <li class="ml-4">○ 🥇 1er lugar: $xx.xx</li>
+                                    <li class="ml-4">○ 🥈 2do lugar: $xx.xx</li>
+                                    <li class="ml-4">○ 🥉 3er lugar: $50</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                        <header class="mb-4">
+                            <h2 class="text-lg font-bold text-emerald-100">⏱ Estructura de Blinds</h2>
+                        </header>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-xs border border-emerald-700 bg-emerald-900/30 rounded-lg overflow-hidden">
+                                <thead class="bg-emerald-800/60">
+                                    <tr>
+                                        <th class="p-2 border-r border-emerald-700 text-left">🧮 Nivel</th>
+                                        <th class="p-2 border-r border-emerald-700 text-left">💵 Small Blind</th>
+                                        <th class="p-2 border-r border-emerald-700 text-left">💵 Big Blind</th>
+                                        <th class="p-2 text-left">⏳ Duración</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${[
+                                        [1, 50, 100, "15 min"],
+                                        [2, 100, 200, "10 min"],
+                                        [3, 200, 400, "10 min"],
+                                        [4, 300, 600, "10 min"],
+                                        [5, 500, 1000, "10 min"],
+                                        [6, 1000, 2000, "10 min"],
+                                        [7, 2000, 4000, "10 min"],
+                                        [8, 4000, 8000, "10 min"],
+                                        [9, 5000, 10000, "10 min"],
+                                        [10, 10000, 20000, "10 min"]
+                                    ].map(([lvl, sb, bb, dur], idx) => `
+                                        <tr class="border-t border-emerald-800 ${idx % 2 === 0 ? 'bg-emerald-900/20' : 'bg-emerald-900/40'}">
+                                            <td class="p-2 border-r border-emerald-700 font-medium text-emerald-200">${lvl}</td>
+                                            <td class="p-2 border-r border-emerald-700">${sb}</td>
+                                            <td class="p-2 border-r border-emerald-700">${bb}</td>
+                                            <td class="p-2">${dur}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                        <header class="mb-4">
+                            <h2 class="text-lg font-bold text-emerald-100">📜 REGLAS GENERALES</h2>
+                        </header>
+                        <div class="space-y-2 text-emerald-100">
+                            <p>• 🃏 Dealer inicial: carta más alta (en empate, se reparte otra)</p>
+                            <p>• 🧍‍♂️ Final de mesa: cuando quedan 3 jugadores</p>
+                            <p>• ⚔️ Eliminación simultánea: se usa el stack inicial para definir posición</p>
+                            <p>• 💱 Cambio de fichas: se reemplazan fichas pequeñas por grandes; fracciones se redondean</p>
+                            <p>• ❌ <strong>Misdeals:</strong></p>
+                            <ul class="ml-6 space-y-1">
+                                <li>○ 🃎 Cartas expuestas por el dealer</li>
+                                <li>○ 🃎 Más de 2 cartas adicionales en mano inicial</li>
+                                <li>○ 🃎 Cartas encajonadas</li>
+                                <li>○ 🃎 Reparto a asiento vacío o falta de reparto a jugador activo</li>
+                                <li>○ 🃎 Reparto fuera de secuencia</li>
+                                <li>○ 🃎 Cantidad incorrecta de cartas (si no se puede corregir sin alterar secuencia)</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        // Funciones de manejo de datos
+        function updatePlayer(playerId, field, value) {
+            const player = appData.players.find(p => p.id === playerId);
+            if (player) {
+                player[field] = value;
+                saveData();
+                updateStatus('💾 Jugador actualizado');
+                if (currentTab === 'dashboard') setTab('dashboard');
+            }
+        }
+
+        function handlePlayerPhoto(playerId, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                updatePlayer(playerId, 'photo', e.target.result);
+                showNotification('📷', 'Foto actualizada correctamente', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setPodium(dayIndex, mesa, rank, playerId) {
+            if (!appData.matchDays[dayIndex]) return;
+            
+            if (!appData.matchDays[dayIndex][mesa]) {
+                appData.matchDays[dayIndex][mesa] = { podium: {}, photo: "" };
+            }
+            
+            if (!appData.matchDays[dayIndex][mesa].podium) {
+                appData.matchDays[dayIndex][mesa].podium = {};
+            }
+            
+            appData.matchDays[dayIndex][mesa].podium[rank] = playerId;
+            saveData();
+            updateStatus('🏆 Podium actualizado');
+        }
+
+        function setHost(dayIndex, hostId) {
+            if (appData.matchDays[dayIndex]) {
+                appData.matchDays[dayIndex].host = hostId;
+                saveData();
+                updateStatus('🏠 Anfitrión asignado');
+            }
+        }
+
+        function handleMesaPhoto(dayIndex, mesa, event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                if (!appData.matchDays[dayIndex][mesa]) {
+                    appData.matchDays[dayIndex][mesa] = { podium: {}, photo: "" };
+                }
+                
+                appData.matchDays[dayIndex][mesa].photo = e.target.result;
+                saveData();
+                setTab('partidas'); // Refresh the view
+                showNotification('📷', 'Foto de mesa subida correctamente', 'success');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function setMatchDayDate(dayIndex, iso) {
+            if (!appData.matchDays[dayIndex]) return;
+            
+            const md = appData.matchDays[dayIndex];
+            const newLabel = md.isFloating ? `${iso} (Flotante)` : md.label;
+            
+            appData.matchDays[dayIndex].dateISO = iso;
+            appData.matchDays[dayIndex].label = newLabel;
+            saveData();
+            updateStatus('📅 Fecha actualizada');
+        }
+
+        function addFloatingMatch() {
+            const floatingCount = appData.matchDays.filter(m => m.isFloating).length;
+            if (floatingCount >= 6) {
+                showNotification('⚠️', 'Máximo 6 partidas flotantes por año', 'warning');
+                return;
+            }
+            
+            const iso = new Date().toISOString().slice(0, 10);
+            const newMatch = {
+                dateISO: iso,
+                label: `${iso} (Flotante)`,
+                host: "",
+                mesa1: { podium: {}, photo: "" },
+                mesa2: { podium: {}, photo: "" },
+                isFloating: true
+            };
+            
+            appData.matchDays.push(newMatch);
+            saveData();
+            setTab('partidas');
+            showNotification('🎈', 'Partida flotante creada', 'success');
+        }
+
+        function removeFloatingMatch(dayIndex) {
+            if (confirm("¿Estás seguro de eliminar esta partida flotante?")) {
+                appData.matchDays.splice(dayIndex, 1);
+                saveData();
+                setTab(currentTab);
+                showNotification('🗑️', 'Partida flotante eliminada', 'success');
+            }
+        }
+
+        // Funciones de colaboración
+        function shareData() {
+            const data = JSON.stringify(appData);
+            const encoded = btoa(unescape(encodeURIComponent(data)));
+            const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Poker 2025/2026 - Dashboard del Torneo',
+                    text: '🃏 ¡Únete al dashboard del torneo de poker!',
+                    url: url
+                });
+            } else {
+                navigator.clipboard.writeText(url).then(() => {
+                    showNotification('🔗', 'Enlace copiado al portapapeles', 'success');
+                }).catch(() => {
+                    prompt('Copia este enlace para compartir:', url);
+                });
+            }
+        }
+
+        function showSyncOptions() {
+            document.getElementById('syncModal').classList.remove('hidden');
+        }
+
+        function closeSyncModal() {
+            document.getElementById('syncModal').classList.add('hidden');
+        }
+
+        function syncViaQR() {
+            const data = JSON.stringify(appData);
+            const encoded = btoa(unescape(encodeURIComponent(data)));
+            const url = `${window.location.origin}${window.location.pathname}?data=${encoded}`;
+            
+            const qrData = encodeURIComponent(url);
+            const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${qrData}`;
+            
+            const newWindow = window.open();
+            newWindow.document.write(`
+                <!DOCTYPE html>
+                <html>
+                    <head>
+                        <title>Código QR - Poker Dashboard</title>
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <style>
+                            body { 
+                                text-align: center; 
+                                font-family: Arial, sans-serif; 
+                                padding: 20px; 
+                                background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+                                color: white;
+                                margin: 0;
+                            }
+                            .container {
+                                max-width: 500px;
+                                margin: 0 auto;
+                                padding: 30px;
+                                background: rgba(6, 95, 70, 0.6);
+                                border-radius: 20px;
+                                backdrop-filter: blur(10px);
+                            }
+                            img {
+                                border: 10px solid #047857;
+                                border-radius: 20px;
+                                margin: 20px 0;
+                                max-width: 100%;
+                            }
+                            h2 { margin-bottom: 10px; }
+                            p { opacity: 0.9; line-height: 1.5; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h2>📱 Escanea este código QR</h2>
+                            <img src="${qrUrl}" alt="QR Code">
+                            <p><strong>🎮 Dashboard Poker 2025/2026</strong></p>
+                            <p>Tus amigos pueden escanear este<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker 2025/2026 - Dashboard Oficial</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #047857 0%, #065f46 50%, #064e3b 100%);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        
+        .card-gradient {
+            background: linear-gradient(135deg, rgba(6, 95, 70, 0.6) 0%, rgba(6, 78, 59, 0.4) 100%);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(6, 95, 70, 0.3);
+        }
+        
+        .poker-button {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transition: all 0.2s ease;
+        }
+        
+        .poker-button:hover {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            transform: translateY(-1px);
+        }
+        
+        .poker-button:active { transform: scale(0.98); }
+        
+        .success-message {
+            background: rgba(34, 197, 94, 0.1);
+            border: 2px solid rgba(34, 197, 94, 0.3);
+        }
+        
+        .sync-indicator { animation: pulse 2s infinite; }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .floating-action {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen text-white">
+    <!-- Loading Screen -->
+    <div id="loadingScreen" class="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-emerald-900 to-emerald-800">
+        <div class="text-center">
+            <div class="flex items-center justify-center mb-4">
+                <div class="relative w-16 h-20 rounded-2xl bg-white shadow-2xl flex items-center justify-center transform -rotate-12 floating-action">
+                    <div class="text-center">
+                        <div class="text-red-500 text-2xl font-bold">A</div>
+                        <div class="text-red-500 text-4xl leading-none">♠</div>
+                    </div>
+                </div>
+                <div class="relative w-16 h-20 rounded-2xl bg-white shadow-2xl -ml-6 rotate-12 flex items-center justify-center floating-action" style="animation-delay: 0.5s;">
+                    <div class="text-center">
+                        <div class="text-red-600 text-2xl font-bold">K</div>
+                        <div class="text-red-600 text-4xl leading-none">♥</div>
+                    </div>
+                </div>
+            </div>
+            <h1 class="text-3xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent mb-2">
+                Poker 2025/2026
+            </h1>
+            <p class="text-emerald-200 text-lg mb-6">Dashboard Oficial del Torneo</p>
+            <div class="w-64 h-2 bg-emerald-800 rounded-full mx-auto overflow-hidden">
+                <div id="loadingBar" class="h-full bg-gradient-to-r from-yellow-400 to-yellow-200 rounded-full transition-all duration-3000 w-0"></div>
+            </div>
+            <p class="text-emerald-300 text-sm mt-4">Cargando sistema de gestión...</p>
+        </div>
+    </div>
+
+    <!-- App principal -->
+    <div id="mainApp" class="hidden">
+        <!-- Header -->
+        <header class="sticky top-0 z-20 bg-gradient-to-b from-emerald-950/95 to-emerald-900/95 backdrop-blur-lg border-b border-emerald-700/50">
+            <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <div class="relative w-8 h-10 rounded-lg bg-white shadow-lg flex items-center justify-center transform -rotate-12">
+                            <div class="text-center">
+                                <div class="text-red-500 text-xs font-bold">A</div>
+                                <div class="text-red-500 text-lg leading-none">♠</div>
+                            </div>
+                        </div>
+                        <div class="relative w-8 h-10 rounded-lg bg-white shadow-lg -ml-3 rotate-12 flex items-center justify-center">
+                            <div class="text-center">
+                                <div class="text-red-600 text-xs font-bold">K</div>
+                                <div class="text-red-600 text-lg leading-none">♥</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-xs uppercase tracking-widest opacity-80 font-semibold">Texas Hold'em Poker</div>
+                        <h1 class="text-xl font-bold bg-gradient-to-r from-yellow-400 to-yellow-200 bg-clip-text text-transparent">
+                            Poker 2025/2026
+                        </h1>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button onclick="exportData()" class="px-3 py-2 rounded-lg poker-button text-xs font-semibold shadow-lg">
+                        📤 Exportar
+                    </button>
+                    <label class="px-3 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-xs font-semibold cursor-pointer shadow-lg">
+                        📥 Importar
+                        <input type="file" accept="application/json" class="hidden" onchange="importData(event)">
+                    </label>
+                </div>
+            </div>
+            
+            <nav class="max-w-md mx-auto px-3 pb-3 grid grid-cols-5 gap-2 text-xs">
+                <button onclick="setTab('dashboard')" id="tab-dashboard" class="tab-button py-2 px-1 rounded-lg font-semibold border transition-all">
+                    <div>🏠</div>
+                    <div class="text-[10px] mt-0.5 opacity-80">Inicio</div>
+                </button>
+                <button onclick="setTab('jugadores')" id="tab-jugadores" class="tab-button py-2 px-1 rounded-lg font-semibold border transition-all">
+                    <div>👥</div>
+                    <div class="text-[10px] mt-0.5 opacity-80">Jugadores</div>
+                </button>
+                <button onclick="setTab('partidas')" id="tab-partidas" class="tab-button py-2 px-1 rounded-lg font-semibold border transition-all">
+                    <div>🗓️</div>
+                    <div class="text-[10px] mt-0.5 opacity-80">Partidas</div>
+                </button>
+                <button onclick="setTab('reglas')" id="tab-reglas" class="tab-button py-2 px-1 rounded-lg font-semibold border transition-all">
+                    <div>📜</div>
+                    <div class="text-[10px] mt-0.5 opacity-80">Reglas</div>
+                </button>
+                <button onclick="setTab('flotantes')" id="tab-flotantes" class="tab-button py-2 px-1 rounded-lg font-semibold border transition-all">
+                    <div>🎈</div>
+                    <div class="text-[10px] mt-0.5 opacity-80">Flotantes</div>
+                </button>
+            </nav>
+        </header>
+
+        <!-- Status bar -->
+        <div id="statusBar" class="bg-emerald-800/40 text-center py-2 text-sm border-b border-emerald-700/30">
+            <span id="statusText">✅ Dashboard en línea - Datos sincronizados</span>
+        </div>
+
+        <!-- Contenido principal -->
+        <main class="max-w-md mx-auto px-4 pb-24 pt-4" id="mainContent">
+            <!-- Se llena dinámicamente -->
+        </main>
+
+        <!-- Footer con acceso rápido -->
+        <footer class="fixed bottom-0 inset-x-0 z-10 bg-gradient-to-t from-emerald-950 to-emerald-950/95 backdrop-blur-lg border-t border-emerald-800/50">
+            <div class="max-w-md mx-auto px-3 py-3">
+                <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+                    <button onclick="shareData()" class="py-2 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 font-semibold shadow-lg transition-all">
+                        🔗 Compartir Dashboard
+                    </button>
+                    <button onclick="showSyncOptions()" class="py-2 rounded-lg bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 font-semibold shadow-lg transition-all">
+                        🔄 Sincronizar Datos
+                    </button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 text-xs">
+                    <button onclick="setTab('jugadores')" class="py-2 rounded-lg poker-button font-semibold shadow-lg">
+                        👥 Jugadores
+                    </button>
+                    <button onclick="setTab('partidas')" class="py-2 rounded-lg bg-gradient-to-r from-blue-700 to-blue-600 hover:from-blue-600 hover:to-blue-500 font-semibold shadow-lg transition-all">
+                        🗓️ Partidas
+                    </button>
+                    <button onclick="addFloatingMatch()" class="py-2 rounded-lg bg-gradient-to-r from-purple-700 to-purple-600 hover:from-purple-600 hover:to-purple-500 font-semibold shadow-lg transition-all">
+                        🎈 + Flotante
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal de sincronización -->
+    <div id="syncModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm hidden">
+        <div class="max-w-md mx-4 p-6 card-gradient rounded-2xl shadow-2xl">
+            <h3 class="text-lg font-bold text-emerald-100 mb-4 text-center">🔄 Opciones de Sincronización</h3>
+            <div class="space-y-3">
+                <button onclick="syncViaQR()" class="w-full p-3 rounded-lg bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 transition-all font-semibold shadow-lg">
+                    📱 Generar código QR para compartir
+                </button>
+                <button onclick="syncViaWhatsApp()" class="w-full p-3 rounded-lg bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 transition-all font-semibold shadow-lg">
+                    💬 Compartir por WhatsApp
+                </button>
+                <button onclick="copyLink()" class="w-full p-3 rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 transition-all font-semibold shadow-lg">
+                    🔗 Copiar enlace de sincronización
+                </button>
+                <button onclick="closeSyncModal()" class="w-full p-2 rounded-lg bg-gray-600 hover:bg-gray-500 transition-colors text-sm">
+                    ❌ Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notificaciones -->
+    <div id="notification" class="fixed top-20 left-4 right-4 z-40 p-3 rounded-lg shadow-lg transform -translate-y-full transition-transform duration-300">
+        <div class="flex items-center gap-2">
+            <span id="notificationIcon"></span>
+            <span id="notificationText"></span>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentTab = 'dashboard';
+        let appData = {
+            title: "Poker 2025/2026",
+            players: [],
+            matchDays: []
+        };
+
+        // Fechas oficiales del torneo
+        const officialDates = [
+            { label: "12 Septiembre 2025 (ya jugada)", iso: "2025-09-12" },
+            { label: "26 Septiembre 2025", iso: "2025-09-26" },
+            { label: "24 Octubre 2025", iso: "2025-10-24" },
+            { label: "21 Noviembre 2025", iso: "2025-11-21" },
+            { label: "12 Diciembre 2025", iso: "2025-12-12" },
+            { label: "30 Enero 2026", iso: "2026-01-30" },
+            { label: "27 Febrero 2026", iso: "2026-02-27" },
+            { label: "27 Marzo 2026", iso: "2026-03-27" },
+            { label: "24 Abril 2026", iso: "2026-04-24" },
+            { label: "29 Mayo 2026", iso: "2026-05-29" },
+            { label: "12 Junio 2026 (Gran Final)", iso: "2026-06-12" }
+        ];
+
+        // Inicializar aplicación
+        function initializeApp() {
+            showLoading();
+            loadAppData();
+            loadFromURL();
+            setTimeout(() => {
+                hideLoading();
+                setTab('dashboard');
+            }, 2000);
+        }
+
+        function showLoading() {
+            const loadingBar = document.getElementById('loadingBar');
+            let width = 0;
+            const interval = setInterval(() => {
+                width += Math.random() * 15;
+                if (width >= 100) {
+                    width = 100;
+                    clearInterval(interval);
+                }
+                loadingBar.style.width = width + '%';
+            }, 100);
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
+        }
+
+        function loadAppData() {
+            const savedData = localStorage.getItem('poker_dashboard_2025_2026_v3');
+            
+            if (savedData) {
+                try {
+                    appData = JSON.parse(savedData);
+                    // Validar estructura de datos
+                    if (!appData.players || !appData.matchDays) {
+                        throw new Error('Invalid data structure');
+                    }
+                } catch (e) {
+                    console.error('Error loading saved data:', e);
+                    createDefaultData();
+                }
+            } else {
+                createDefaultData();
+            }
+            
+            saveData();
+        }
+
+        function createDefaultData() {
+            appData.players = Array.from({ length: 15 }, (_, i) => ({
+                id: `p${i + 1}`,
+                name: `Jugador ${i + 1}`,
+                paid: false,
+                photo: ""
+            }));
+
+            appData.matchDays = officialDates.map(d => ({
+                dateISO: d.iso,
+                label: d.label,
+                host: "",
+                mesa1: { podium: {}, photo: "" },
+                mesa2: { podium: {}, photo: "" },
+                isFloating: false
+            }));
+        }
+
+        function saveData() {
+            localStorage.setItem('poker_dashboard_2025_2026_v3', JSON.stringify(appData));
+        }
+
+        // Gestión de pestañas
+        function setTab(tab) {
+            currentTab = tab;
+            
+            // Actualizar navegación
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.className = 'tab-button py-2 px-1 rounded-lg font-semibold border transition-all bg-emerald-800/40 border-emerald-700/60 hover:bg-emerald-700/40';
+            });
+            
+            const activeBtn = document.getElementById(`tab-${tab}`);
+            if (activeBtn) {
+                activeBtn.className = 'tab-button py-2 px-1 rounded-lg font-semibold border transition-all bg-gradient-to-r from-emerald-600 to-emerald-700 border-emerald-400 shadow-lg';
+            }
+            
+            // Renderizar contenido
+            const content = document.getElementById('mainContent');
+            switch(tab) {
+                case 'dashboard':
+                    content.innerHTML = renderDashboard();
+                    break;
+                case 'jugadores':
+                    content.innerHTML = renderPlayers();
+                    break;
+                case 'partidas':
+                    content.innerHTML = renderMatches();
+                    break;
+                case 'flotantes':
+                    content.innerHTML = renderFloating();
+                    break;
+                case 'reglas':
+                    content.innerHTML = renderRules();
+                    break;
+            }
+        }
+
+        // Renderizar dashboard principal
+        function renderDashboard() {
+            const standings = calculateStandings();
+            const paidPlayers = appData.players.filter(p => p.paid).length;
+            const playedMatches = appData.matchDays.filter(md => 
+                md.mesa1.podium.first || md.mesa1.podium.second || md.mesa1.podium.third ||
+                md.mesa2.podium.first || md.mesa2.podium.second || md.mesa2.podium.third
+            ).length;
+            
+            return `
+                <section class="space-y-6">
+                    <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                        <header class="mb-4">
+                            <h2 class="text-lg font-bold text-emerald-100">🏆 Clasificación General</h2>
+                            <p class="text-sm opacity-80 text-emerald-200 mt-1">Top 6 finalistas del torneo</p>
+                        </header>
+                        <div class="space-y-3">
+                            ${standings.slice(0, 6).map((p, idx) => `
+                                <div class="flex items-center justify-between p-3 rounded-xl border ${
+                                    idx === 0 ? 'bg-gradient-to-r from-yellow-500/20 to-yellow-400/20 border-yellow-400/50' :
+                                    idx === 1 ? 'bg-gradient-to-r from-gray-400/20 to-gray-300/20 border-gray-400/50' :
+                                    idx === 2 ? 'bg-gradient-to-r from-amber-600/20 to-amber-500/20 border-amber-500/50' :
+                                    'bg-emerald-800/30 border-emerald-700/50'
+                                }">
+                                    <div class="flex items-center gap-3">
+                                        <div class="text-2xl font-bold text-emerald-200 w-8 text-center">
+                                            ${idx < 3 ? ['🥇', '🥈', '🥉'][idx] : `${idx + 1}°`}
+                                        </div>
+                                        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-950/60 to-emerald-900/80 border-2 border-emerald-700/50 text-emerald-300 flex items-center justify-center overflow-hidden shadow-lg">
+                                            ${p.photo ? `<img src="${p.photo}" alt="foto" class="w-full h-full object-cover">` : `
+                                                <svg viewBox="0 0 24 24" class="w-8 h-8" fill="currentColor">
+                                                    <path d="M12 12c2.761 0 5-2.686 5-6S14.761 0 12 0 7 2.686 7 6s2.239 6 5 6zm0 2c-3.866 0-7 3.134-7 7a1 1 0 001 1h12a1 1 0 001-1c0-3.866-3.134-7-7-7z" />
+                                                </svg>
+                                            `}
+                                        </div>
+                                        <div>
+                                            <div class="font-semibold text-white">${p.name}</div>
+                                            <div class="text-xs px-2 py-0.5 rounded-full font-medium ${p.paid ? 'bg-green-500/80 text-white' : 'bg-red-500/80 text-white'}">
+                                                ${p.paid ? '✅ Pagado' : '❌ No pagado'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-2xl font-bold text-emerald-100">${p.points}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        ${standings.length > 6 ? `
+                            <details class="mt-4">
+                                <summary class="cursor-pointer text-sm text-emerald-300 hover:text-emerald-100 transition-colors">
+                                    Ver resto de clasificación (${standings.length - 6} jugadores más)
+                                </summary>
+                                <div class="mt-3 space-y-2">
+                                    ${standings.slice(6).map((p, idx) => `
+                                        <div class="flex items-center justify-between py-2 px-3 bg-emerald-800/20 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div class="text-sm opacity-80 w-6 text-center">${idx + 7}°</div>
+                                                <div class="w-8 h-8 rounded-lg bg-emerald-950/60 border border-emerald-700/50 flex items-center justify-center overflow-hidden">
+                                                    ${p.photo ? `<img src="${p.photo}" alt="foto" class="w-full h-full object-cover">` : '👤'}
+                                                </div>
+                                                <div>
+                                                    <div class="text-sm font-medium">${p.name}</div>
+                                                    <div class="text-xs px-2 py-0.5 rounded-full ${p.paid ? 'bg-green-500/60' : 'bg-red-500/60'}">
+                                                        ${p.paid ? 'Pagado' : 'No pagado'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="font-bold">${p.points}</div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </details>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                        <header class="mb-4">
+                            <h2 class="text-lg font-bold text-emerald-100">📊 Estadísticas del Torneo</h2>
+                        </header>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div class="text-center p-3 bg-emerald-800/30 rounded-lg">
+                                <div class="text-2xl font-bold text-emerald-200">${paidPlayers}</div>
+                                <div class="text-xs opacity-80">Jugadores pagados</div>
+                            </div>
+                            <div class="text-center p-3 bg-emerald-800/30 rounded-lg">
+                                <div class="text-2xl font-bold text-emerald-200">${playedMatches}</div>
+                                <div class="text-xs opacity-80">Partidas jugadas</div>
+                            </div>
+                            <div class="text-center p-3 bg-emerald-800/30 rounded-lg">
+                                <div class="text-2xl font-bold text-emerald-200">$${paidPlayers * 50}</div>
+                                <div class="text-xs opacity-80">Bote acumulado</div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+            `;
+        }
+
+        // Calcular clasificación
+        function calculateStandings() {
+            const points = new Map(appData.players.map(p => [p.id, 0]));
+            
+            appData.matchDays.forEach(md => {
+                [md.mesa1, md.mesa2].forEach(mesa => {
+                    if (mesa.podium.first) points.set(mesa.podium.first, (points.get(mesa.podium.first) || 0) + 6);
+                    if (mesa.podium.second) points.set(mesa.podium.second, (points.get(mesa.podium.second) || 0) + 3);
+                    if (mesa.podium.third) points.set(mesa.podium.third, (points.get(mesa.podium.third) || 0) + 1);
+                });
+            });
+            
+            return appData.players
+                .map(p => ({ ...p, points: points.get(p.id) || 0 }))
+                .sort((a, b) => b.points - a.points || a.name.localeCompare(b.name));
+        }
+
+        // Renderizar jugadores
+        function renderPlayers() {
+            return `
+                <section class="space-y-4">
+                    <div class="card-gradient rounded-2xl shadow-xl backdrop-blur-sm p-4">
+                        <header class="mb-4">
+                            <h2 class="text-lg font-bold text-emerald-100">👥 Gestión de Jugadores</h2>
+                            <p class="text-sm opacity-80 text-emerald-200 mt-1">Toca la foto para cambiarla, edita nombres directamente</p>
+                        </header>
+                        <div class="grid grid-cols-1 gap-4">
+                            ${appData.players.map((p, idx) => `
+                                <div class="rounded-xl bg-gradient-to-r from-emerald-800/40 to-emerald-700/40 p-4 border border-emerald-600/50 shadow-lg">
+                                    <div class="flex items-center gap-4">
+                                        <label class="relative block group cursor-pointer">
+                                            <div class="w-16 h-16 rounded-xl bg-gradient-to-br from-emerald-950/60 to-emerald-900/80 border-2 border-emerald-700/50 text-emerald-300 flex items-center justify-center overflow-hidden shadow-lg">
+                                                ${p.photo ? `<img src="${p.photo}" alt="foto" class="w-full h-full object-cover">` : `
+                                                    <svg viewBox="0 0 24 24" class="w-8 h-8" fill="currentColor">
+                                                        <path d="M12 12c2.761 0 5-2.686 5-6S14.761 0 12 0 7 2.686 7 6s2.239 6 5 6zm0 2c-3.866 0-7 3.134-7 7a1 1 0 001 1h12a1 1 0 001-1c0-3.866-3.134-7-7-7z" />
+                                                    </svg>
+                                                `}
+                                            </div>
+                                            <div class="absolute inset-0 bg-black/50 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <span class="text-xs text-white font-medium">📷 Cambiar</span>
+                                            </div>
+                                            <input type="file" accept="image/*" class="absolute inset-0 opacity-0" onchange="handlePlayerPhoto('${p.id}', event)">
+                                        </label>
+                                        
+                                        <div class="flex-1">
+                                            <input value="${p.name}" onchange="updatePlayer('${p.id}', 'name', this.value)" class="w-full bg-transparent border-b-2 border-emerald-600/50 focus:border-emerald-400 focus:outline-none text-lg font-semibold pb-1 transition-colors" placeholder="Nombre del jugador">
+                                            
+                                            <div class="mt-3 grid grid-cols-2 gap-2">
+                                                <button onclick="updatePlayer('${p.id}', 'paid', true)" class="py-2 px-3 rounded-lg text-sm font-bold border-2 transition-all ${p.paid ? 'bg-green-600 border-green-400 text-white shadow-lg' : 'bg-emerald-900/30
