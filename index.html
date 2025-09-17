@@ -14,7 +14,6 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
     
     <style>
         body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
@@ -24,80 +23,82 @@
     <div id="root"></div>
 
     
-    <!-- Supabase backend bridge (no cambia tu UI) -->
+    <!-- Supabase backend bridge (mantiene tu UI tal cual) -->
     <script>
-    // ======= CONFIGURA AQUÍ TUS CLAVES DE SUPABASE (Project Settings → API) =======
-    const SUPABASE_URL  = "https://ynqkncnsqfjtcvvyklvy.supabase.co";   // ← pega tu Project URL
-    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucWtuY25zcWZqdGN2dnlrbHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDAwMTEsImV4cCI6MjA3MzcxNjAxMX0.YE41Q4eX9UjuocXxF3e2b6lRWNrj7SGyY-LF6REdync";                          // ← pega tu anon public key (NO service_role)
+    // === Pega tus credenciales públicas (Project Settings → API) ===
+    const SUPABASE_URL  = "https://ynqkncnsqfjtcvvyklvy.supabase.co"; // <-- CAMBIAR
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucWtuY25zcWZqdGN2dnlrbHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDAwMTEsImV4cCI6MjA3MzcxNjAxMX0.YE41Q4eX9UjuocXxF3e2b6lRWNrj7SGyY-LF6REdync";                         // <-- CAMBIAR (anon public key)
 
-    // Cliente
-    const __sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    // --- Lecturas ---
-    async function __loadJugadores(){
-      const { data, error } = await __sb.from('jugadores').select('*').order('puntos',{ascending:false});
+    // ---- Lecturas mínimas ----
+    async function _loadJugadores(){
+      const { data, error } = await sb.from('jugadores').select('*').order('puntos',{ascending:false});
       if (error) { console.error('jugadores/select', error); return; }
       if (window.onPlayers) window.onPlayers(data || []);
     }
-    async function __loadClasificacion(){
-      // Si tienes una vista 'clasificacion', úsala
-      const v = await __sb.from('clasificacion').select('*').order('puntos',{ascending:false});
-      if (!v.error && Array.isArray(v.data)) { window.onRanking && window.onRanking(v.data); return; }
-      // Fallback: calcula con resultados si quieres — aquí nos basta con jugadores
-      const js = (await __sb.from('jugadores').select('id,nombre,puntos,balance,paid,avatar')).data || [];
-      const out = js.map(j => ({ id:j.id, nombre:j.nombre, puntos:Number(j.puntos||0), balance:j.balance })).sort((a,b)=>b.puntos-a.puntos);
+    async function _loadClasificacion(){
+      const tryView = await sb.from('clasificacion').select('*').order('puntos',{ascending:false});
+      if (!tryView.error && Array.isArray(tryView.data)) {
+        window.onRanking && window.onRanking(tryView.data);
+        return;
+      }
+      const js = (await sb.from('jugadores').select('id,nombre,puntos,balance,paid,avatar')).data || [];
+      const out = js.map(j=>({ id:j.id, nombre:j.nombre, puntos:Number(j.puntos||0), balance:j.balance||0 }))
+                    .sort((a,b)=> b.puntos - a.puntos);
       window.onRanking && window.onRanking(out);
     }
 
-    // --- Escrituras ---
-    async function __addJugador(nombre, avatar){
-      const { error } = await __sb.from('jugadores').insert({ nombre, avatar }).select();
+    // ---- Escrituras ----
+    async function _addJugador(nombre, avatar){
+      const { error } = await sb.from('jugadores').insert({ nombre, avatar }).select();
       if (error) console.error('jugadores/insert', error);
     }
-    async function __updateJugador(id, patch){
-      const { error } = await __sb.from('jugadores').update(patch).eq('id', id);
+    async function _updateJugador(id, patch){
+      const { error } = await sb.from('jugadores').update(patch).eq('id', id);
       if (error) console.error('jugadores/update', error);
     }
-    async function __deleteJugador(id){
-      const { error } = await __sb.from('jugadores').delete().eq('id', id);
+    async function _deleteJugador(id){
+      const { error } = await sb.from('jugadores').delete().eq('id', id);
       if (error) console.error('jugadores/delete', error);
     }
-    async function __syncPoints(players){
+    async function _syncPoints(players){
       try {
-        const ops = players.map(p => __sb.from('jugadores').update({ puntos: Number(p.totalPoints||0) }).eq('id', p.id));
+        const ops = players.map(p => sb.from('jugadores').update({ puntos: Number(p.totalPoints||0) }).eq('id', p.id));
         await Promise.all(ops);
       } catch(e){ console.error('jugadores/syncPoints', e); }
     }
 
-    // --- Realtime + broadcast + polling (para refrescar otros dispositivos) ---
-    const __chDB = __sb.channel('db-changes');
-    __chDB.on('postgres_changes', { event:'*', schema:'public', table:'jugadores' }, ()=> __refreshAll('[rt jugadores]'));
-    __chDB.subscribe();
+    // ---- Realtime + broadcast + polling ----
+    const chDB = sb.channel('db-changes');
+    chDB.on('postgres_changes', { event:'*', schema:'public', table:'jugadores' }, () => refreshAll('[rt jugadores]'));
+    chDB.subscribe();
 
-    const __ch = __sb.channel('poker-2025-2026');
-    __ch.on('broadcast', { event:'data-changed' }, ()=> __refreshAll('[broadcast]'));
-    __ch.subscribe();
-    async function __notify(){ try{ await __ch.send({ type:'broadcast', event:'data-changed', payload:{} }); } catch(e){} }
+    const ch = sb.channel('poker-2025-2026');
+    ch.on('broadcast', { event:'data-changed' }, () => refreshAll('[broadcast]'));
+    ch.subscribe();
+    async function notify(){ try{ await ch.send({ type:'broadcast', event:'data-changed', payload:{} }); } catch(e){} }
 
-    let __POLL=null;
-    function __startPolling(ms=7000){ if(__POLL) clearInterval(__POLL); __POLL=setInterval(()=>__refreshAll('[poll]'), ms); }
-    setTimeout(()=> __startPolling(12000), 10000); // fallback si sockets no tiran
+    let POLL=null;
+    function startPolling(ms=7000){ if(POLL) clearInterval(POLL); POLL=setInterval(()=>refreshAll('[poll]'), ms); }
+    setTimeout(()=> startPolling(12000), 10000);
 
-    async function __refreshAll(tag=''){
+    async function refreshAll(tag=''){
       console.log('refresh', tag);
-      await Promise.all([__loadJugadores(), __loadClasificacion()]);
+      await Promise.all([_loadJugadores(), _loadClasificacion()]);
     }
 
-    // API pública para tu app React (no cambiamos tu JSX)
+    // ---- API pública para tu React ----
     window.backend = {
-      init({onPlayers,onRanking}){
-        window.onPlayers=onPlayers; window.onRanking=onRanking;
-        __refreshAll('[init]');
+      init({ onPlayers, onRanking }){
+        window.onPlayers = onPlayers;
+        window.onRanking = onRanking;
+        refreshAll('[init]');
       },
-      addJugador: async (nombre, avatar)=>{ await __addJugador(nombre, avatar); await __notify(); },
-      updateJugador: async (id, patch)=>{ await __updateJugador(id, patch); await __notify(); },
-      deleteJugador: async (id)=>{ await __deleteJugador(id); await __notify(); },
-      syncPoints: async (players)=>{ await __syncPoints(players); await __notify(); }
+      addJugador:   async (nombre, avatar)=>{ await _addJugador(nombre, avatar); await notify(); },
+      updateJugador:async (id, patch)=>{ await _updateJugador(id, patch); await notify(); },
+      deleteJugador:async (id)=>{ await _deleteJugador(id); await notify(); },
+      syncPoints:   async (players)=>{ await _syncPoints(players); await notify(); }
     };
     </script>
 
@@ -195,6 +196,21 @@
         );
 
         const PokerDashboard = () => {
+  // === Conectar estado a Supabase (no cambia tu UI) ===
+  const [__init, __setInit] = React.useState(false);
+  React.useEffect(()=>{
+    if(!__init && window.backend){
+      window.backend.init({
+        onPlayers: (rows)=>{
+          const mapped = rows.map(r=>({ id:r.id, name:r.nombre, photo:r.avatar||null, paid:!!r.paid, totalPoints:Number(r.puntos||0), gamesPlayed:0, wins:0 }));
+          setPlayers(mapped);
+        },
+        onRanking: ()=>{/* tu pestaña usa players, así que no tocamos */}
+      });
+      __setInit(true);
+    }
+  },[__init]);
+
           const [activeTab, setActiveTab] = useState('players');
           
           // Fechas oficiales del torneo (todos los viernes)
@@ -269,17 +285,12 @@
               position: index + 1
             }));
 
-          const addPlayer = () => {
-            if (newPlayerName.trim() && players.length < 15) {
-              const newPlayer = {
-                id: Date.now(),
-                name: newPlayerName.trim(),
-                totalPoints: 0,
-                gamesPlayed: 0,
-                wins: 0,
-                photo: null,
-                paid: false
-              };
+          const addPlayer = async () => {
+  if (newPlayerName.trim() && players.length < 15) {
+    await window.backend.addJugador(newPlayerName.trim(), null);
+    setNewPlayerName('');
+  }
+};
               setPlayers([...players, newPlayer]);
               setNewPlayerName('');
             }
@@ -289,16 +300,14 @@
             setEditingPlayer({ ...player });
           };
 
-          const savePlayer = () => {
-            setPlayers(players.map(p => 
-              p.id === editingPlayer.id ? editingPlayer : p
-            ));
-            setEditingPlayer(null);
-          };
+          const savePlayer = async () => {
+  await window.backend.updateJugador(editingPlayer.id, { nombre: editingPlayer.name, avatar: editingPlayer.photo, paid: !!editingPlayer.paid });
+  setEditingPlayer(null);
+};
 
-          const deletePlayer = (id) => {
-            setPlayers(players.filter(p => p.id !== id));
-          };
+          const deletePlayer = async (id) => {
+  await window.backend.deleteJugador(id);
+};
 
           const handlePhotoUpload = (playerId, event) => {
             const file = event.target.files[0];
@@ -350,11 +359,11 @@
             }
           };
 
-          const togglePaymentStatus = (playerId) => {
-            setPlayers(players.map(p => 
-              p.id === playerId ? { ...p, paid: !p.paid } : p
-            ));
-          };
+          const togglePaymentStatus = async (playerId) => {
+  const p = players.find(x=>x.id===playerId);
+  if(!p) return;
+  await window.backend.updateJugador(playerId, { paid: !p.paid });
+};
 
           const updateGameHost = (gameId, hostId) => {
             if (gameId.startsWith('floating-')) {
@@ -424,6 +433,7 @@
               });
               
               setPlayers(updatedPlayers);
+              if (window.backend && window.backend.syncPoints) window.backend.syncPoints(updatedPlayers);
             }
           };
 
@@ -469,6 +479,7 @@
               });
               
               setPlayers(updatedPlayers);
+              if (window.backend && window.backend.syncPoints) window.backend.syncPoints(updatedPlayers);
               setFloatingGames(floatingGames.filter(g => g.id !== gameId));
             }
           };
