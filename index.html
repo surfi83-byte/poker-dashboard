@@ -1,684 +1,766 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poker Tournament Dashboard 2025/2026</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-        .bg-green-750 {
-            background-color: #166534;
-        }
-    </style>
-</head>
-<body class="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black text-white">
-    <!-- Header -->
-    <div class="bg-gradient-to-r from-green-600 to-green-700 p-4 shadow-2xl">
-        <div class="flex items-center justify-center mb-2">
-            <div class="bg-green-500 rounded-lg p-2 mr-3">
-                <span class="text-2xl">♠️</span>
-            </div>
-            <h1 class="text-2xl font-bold text-center">Texas Hold'em Poker</h1>
+import React, { useEffect, useMemo, useState } from "react";
+
+// Poker 2025/2026 – Dashboard móvil v1.0 (React + Tailwind CSS)
+// ✅ Optimizado para móvil (vertical)
+// ✅ Estética minimalista con look & feel de poker
+// ✅ Registro de jugadores (hasta 15) con foto anónima clickable para subir foto
+// ✅ Seguimiento de pagos (No pagado por defecto / Pagado con toggle)
+// ✅ Calendario de partidas (fechas oficiales + partidas flotantes hasta 6/año)
+// ✅ Cada fecha tiene 2 mesas, con: anfitrión (común), finalistas 1º/2º/3º y 2 fotos (mesa1/mesa2)
+// ✅ Integrantes por mesa (seleccionables de la lista de jugadores) + sección desplegable
+// ✅ Clasificación general (suma de mejores 12 mesas por jugador; 1º=6, 2º=3, 3º=1)
+// ✅ Exportar / Importar JSON para copias de seguridad
+// ✅ Sección de REGLAS con el texto proporcionado (con emojis)
+// ✅ Persistencia local (localStorage) y sin dependencias externas
+
+/************************************
+ * Utilidades y datos iniciales
+ ************************************/
+const MAX_PLAYERS = 15;
+const MAX_FLOATING_PER_YEAR = 6;
+
+const OFFICIAL_DATES = [
+  { date: "2025-09-12", label: "12 Septiembre 2025 (ya jugada)" },
+  { date: "2025-09-26", label: "26 Septiembre 2025" },
+  { date: "2025-10-24", label: "24 Octubre 2025" },
+  { date: "2025-11-21", label: "21 Noviembre 2025" },
+  { date: "2025-12-12", label: "12 Diciembre 2025" },
+  { date: "2026-01-30", label: "30 Enero 2026" },
+  { date: "2026-02-27", label: "27 Febrero 2026" },
+  { date: "2026-03-27", label: "27 Marzo 2026" },
+  { date: "2026-04-24", label: "24 Abril 2026" },
+  { date: "2026-05-29", label: "29 Mayo 2026" },
+  { date: "2026-06-12", label: "12 Junio 2026 (Gran Final)" },
+];
+
+const EMPTY_AVATAR =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(`<?xml version='1.0' encoding='UTF-8'?>
+  <svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 128 128'>
+    <rect width='128' height='128' rx='16' fill='#0c7c3a'/>
+    <circle cx='64' cy='48' r='22' fill='#e6f7ef'/>
+    <rect x='24' y='78' width='80' height='34' rx='17' fill='#e6f7ef'/>
+  </svg>`);
+
+function uid() {
+  return Math.random().toString(36).slice(2, 10);
+}
+
+function save(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+function load(key, fallback) {
+  try {
+    const v = localStorage.getItem(key);
+    return v ? JSON.parse(v) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/************************************
+ * Componentes UI básicos
+ ************************************/
+function AppHeader() {
+  return (
+    <div className="sticky top-0 z-40 bg-green-700 text-white">
+      <div className="flex items-center gap-3 px-4 py-3">
+        <LogoBadge />
+        <div className="leading-tight">
+          <div className="text-xs uppercase tracking-widest opacity-90">Dashboard</div>
+          <h1 className="text-lg font-semibold">Poker 2025/2026</h1>
         </div>
-        <h2 class="text-xl text-center font-semibold text-green-100">
-            Poker 2025/2026
-        </h2>
+      </div>
     </div>
+  );
+}
 
-    <!-- Navigation -->
-    <div class="flex overflow-x-auto bg-green-700 shadow-lg">
-        <button onclick="showSection('players')" id="nav-players" class="nav-btn flex-1 p-3 flex items-center justify-center space-x-2 font-medium transition-all bg-green-800 text-white border-b-2 border-green-300">
-            <span>👥</span>
-            <span class="text-sm">Jugadores</span>
-        </button>
-        <button onclick="showSection('matches')" id="nav-matches" class="nav-btn flex-1 p-3 flex items-center justify-center space-x-2 font-medium transition-all text-green-100 hover:bg-green-600">
-            <span>📅</span>
-            <span class="text-sm">Partidas</span>
-        </button>
-        <button onclick="showSection('ranking')" id="nav-ranking" class="nav-btn flex-1 p-3 flex items-center justify-center space-x-2 font-medium transition-all text-green-100 hover:bg-green-600">
-            <span>🏆</span>
-            <span class="text-sm">Ranking</span>
-        </button>
-        <button onclick="showSection('rules')" id="nav-rules" class="nav-btn flex-1 p-3 flex items-center justify-center space-x-2 font-medium transition-all text-green-100 hover:bg-green-600">
-            <span>📜</span>
-            <span class="text-sm">Reglas</span>
-        </button>
+function LogoBadge() {
+  return (
+    <div className="flex items-center gap-2">
+      <div className="bg-white/10 backdrop-blur px-3 py-2 rounded-xl border border-white/20">
+        <div className="flex items-center gap-2">
+          <PlayingCardIcon />
+          <span className="font-medium">Texas Hold’em Poker</span>
+        </div>
+      </div>
     </div>
+  );
+}
 
-    <!-- Export/Import Controls -->
-    <div class="p-4 bg-green-800 flex justify-center space-x-4">
-        <button onclick="exportData()" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors">
-            <span>⬇️</span>
-            <span>Exportar</span>
-        </button>
-        <button onclick="document.getElementById('import-file').click()" class="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors">
-            <span>⬆️</span>
-            <span>Importar</span>
-        </button>
-        <input type="file" id="import-file" accept=".json" onchange="importData(event)" class="hidden">
+function PlayingCardIcon() {
+  return (
+    <svg aria-hidden className="w-6 h-6" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="5" y="2" width="14" height="20" rx="2" className="fill-white/90" />
+      <rect x="7" y="4" width="10" height="16" rx="1" className="fill-green-600" />
+      <path d="M12 8l2 3h-4l2-3zm0 8l-2-3h4l-2 3z" className="fill-white" />
+    </svg>
+  );
+}
+
+function TabBar({ tab, setTab }) {
+  const tabs = [
+    { id: "jugadores", label: "👤 Jugadores" },
+    { id: "partidas", label: "🗓 Partidas" },
+    { id: "clasificacion", label: "🏆 Clasificación" },
+    { id: "reglas", label: "📜 Reglas" },
+    { id: "copias", label: "💾 Copias" },
+  ];
+  return (
+    <div className="sticky top-[60px] z-30 bg-white border-b border-gray-200">
+      <div className="flex overflow-x-auto no-scrollbar">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            className={`shrink-0 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${
+              tab === t.id ? "border-green-600 text-green-700" : "border-transparent text-gray-600"
+            }`}
+            onClick={() => setTab(t.id)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
     </div>
+  );
+}
 
-    <!-- Content -->
-    <div class="p-4">
-        <!-- Players Section -->
-        <div id="players-section" class="section">
-            <div class="flex justify-between items-center mb-6">
-                <h3 class="text-xl font-bold">Jugadores Registrados</h3>
-                <button onclick="addPlayer()" class="flex items-center space-x-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors">
-                    <span>➕</span>
-                    <span>Agregar</span>
-                </button>
-            </div>
-            <div id="players-container" class="grid gap-4"></div>
-        </div>
+/************************************
+ * Modelo de datos
+ ************************************/
+const defaultPlayers = Array.from({ length: MAX_PLAYERS }).map((_, i) => ({
+  id: uid(),
+  name: "",
+  photo: "",
+  paid: false, // por defecto No pagado
+}));
 
-        <!-- Matches Section -->
-        <div id="matches-section" class="section hidden">
-            <h3 class="text-xl font-bold mb-6">Calendario de Partidas</h3>
-            <div id="matches-container" class="space-y-4"></div>
-            
-            <div class="mt-8 text-center">
-                <button onclick="addFloatingMatch()" class="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white px-6 py-3 rounded-xl font-medium transition-all transform hover:scale-105 shadow-lg">
-                    ➕ Agregar Partida Flotante
-                </button>
-            </div>
+const defaultPartidas = OFFICIAL_DATES.map((d) => ({
+  id: uid(),
+  date: d.date,
+  label: d.label,
+  isFloating: false,
+  host: "",
+  mesas: [
+    {
+      id: uid(),
+      name: "Mesa 1",
+      finalists: { first: "", second: "", third: "" },
+      integrantes: [],
+      photo: "",
+    },
+    {
+      id: uid(),
+      name: "Mesa 2",
+      finalists: { first: "", second: "", third: "" },
+      integrantes: [],
+      photo: "",
+    },
+  ],
+}));
 
-            <!-- Gran Final -->
-            <div class="mt-8 bg-gradient-to-br from-yellow-600 via-orange-600 to-red-600 rounded-xl p-6 shadow-2xl">
-                <h4 class="text-2xl font-bold text-center text-white mb-2">🏆 GRAN FINAL</h4>
-                <p class="text-center text-yellow-100 text-lg font-semibold">12 de Junio 2026</p>
-                <p class="text-center text-yellow-200 mt-2">Los 6 mejores jugadores de la temporada</p>
-            </div>
-        </div>
+const defaultState = {
+  players: defaultPlayers,
+  partidas: defaultPartidas,
+};
 
-        <!-- Ranking Section -->
-        <div id="ranking-section" class="section hidden">
-            <h3 class="text-xl font-bold mb-6">🏆 Clasificación General</h3>
-            <div class="bg-gradient-to-br from-green-800 to-green-900 rounded-xl p-6 shadow-xl">
-                <div id="ranking-container">
-                    <p class="text-center text-green-300 text-lg mb-6">
-                        El ranking se actualizará automáticamente basado en los resultados de las partidas.
-                    </p>
-                </div>
-                <div class="mt-6 text-center">
-                    <div class="inline-block bg-green-700 rounded-lg p-4">
-                        <h4 class="font-bold text-green-300 mb-2">Sistema de Puntuación</h4>
-                        <div class="text-sm space-y-1">
-                            <p>🥇 1er lugar: 6 puntos</p>
-                            <p>🥈 2do lugar: 3 puntos</p>
-                            <p>🥉 3er lugar: 1 punto</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+/************************************
+ * Helpers clasificación
+ ************************************/
+function computeLeaderboard(players, partidas) {
+  // Recoge todos los podios mesa a mesa, suma puntos (6/3/1) y se queda con las 12 mejores mesas por jugador
+  const scoresByPlayer = new Map();
 
-        <!-- Rules Section -->
-        <div id="rules-section" class="section hidden">
-            <div class="bg-gradient-to-br from-green-800 to-green-900 rounded-xl p-6 shadow-2xl">
-                <h3 class="text-2xl font-bold mb-6 text-center text-green-300">🎯 REGLAS DEL TORNEO</h3>
-                
-                <div class="space-y-6 text-sm leading-relaxed">
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">💰 Entrada</h4>
-                        <ul class="space-y-2 pl-4">
-                            <li>• Costo: $50 USD</li>
-                            <li>• 💳 Pago a: Eliuth Triana</li>
-                            <li>• 🧾 Los participantes no acumularán puntos para la clasificación general hasta confirmar participación y pago</li>
-                        </ul>
-                    </div>
+  function addScore(name, pts) {
+    if (!name) return;
+    const key = name.trim().toLowerCase();
+    if (!key) return;
+    const arr = scoresByPlayer.get(key) || [];
+    arr.push(pts);
+    scoresByPlayer.set(key, arr);
+  }
 
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">🃏 Participantes externos</h4>
-                        <ul class="space-y-2 pl-4">
-                            <li>• 👥 Pueden jugar en las mesas (a discreción del anfitrión)</li>
-                            <li>• 🏆 Acceden al premio de la mesa</li>
-                            <li>• 🚫 No acumulan puntos para el torneo</li>
-                        </ul>
-                    </div>
+  partidas.forEach((p) => {
+    p.mesas.forEach((m) => {
+      addScore(m.finalists.first, 6);
+      addScore(m.finalists.second, 3);
+      addScore(m.finalists.third, 1);
+    });
+  });
 
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">📅 Fechas oficiales</h4>
-                        <ul class="space-y-1 pl-4">
-                            <li>• 🗓 12 Septiembre</li>
-                            <li>• 🗓 26 Septiembre</li>
-                            <li>• 🗓 24 Octubre</li>
-                            <li>• 🗓 21 Noviembre</li>
-                            <li>• 🗓 12 Diciembre</li>
-                            <li>• 🗓 30 Enero</li>
-                            <li>• 🗓 27 Febrero</li>
-                            <li>• 🗓 27 Marzo</li>
-                            <li>• 🗓 24 Abril</li>
-                            <li>• 🗓 29 Mayo</li>
-                        </ul>
-                    </div>
+  const rows = [];
+  // Preferimos el nombre escrito como en jugadores, si existe
+  const nameMap = new Map();
+  players.forEach((pl) => {
+    if (pl.name) nameMap.set(pl.name.trim().toLowerCase(), pl.name.trim());
+  });
 
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">➕ Fechas adicionales</h4>
-                        <ul class="space-y-2 pl-4">
-                            <li>• 🔄 Máximo 2 por mes</li>
-                            <li>• 👥 Requiere mínimo 6 jugadores del torneo</li>
-                        </ul>
-                    </div>
+  for (const [key, arr] of scoresByPlayer.entries()) {
+    const sorted = [...arr].sort((a, b) => b - a).slice(0, 12);
+    const total = sorted.reduce((s, x) => s + x, 0);
+    rows.push({ name: nameMap.get(key) || key, total, best12Count: sorted.length });
+  }
 
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">🎉 Gran Final</h4>
-                        <p class="pl-4">• 📍 Fecha: 12 de Junio</p>
-                    </div>
+  // Jugadores sin puntos: aparecen con 0 si están en el registro
+  players
+    .filter((p) => p.name.trim())
+    .forEach((p) => {
+      const key = p.name.trim().toLowerCase();
+      if (!scoresByPlayer.has(key)) rows.push({ name: p.name.trim(), total: 0, best12Count: 0 });
+    });
 
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">🏆 Sistema de puntuación</h4>
-                        <ul class="space-y-2 pl-4">
-                            <li>• 🥇 1er lugar: 6 puntos</li>
-                            <li>• 🥈 2do lugar: 3 puntos</li>
-                            <li>• 🥉 3er lugar: 1 punto</li>
-                            <li>• 📊 Se consideran las 12 mejores mesas</li>
-                            <li>• ➕ Si no se llega a 12, se suman los puntos acumulados</li>
-                        </ul>
-                    </div>
+  return rows.sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+}
 
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">🎖 Finalistas</h4>
-                        <ul class="space-y-2 pl-4">
-                            <li>• 👑 Los 6 mejores jugadores acceden a la mesa final</li>
-                            <li>• 🔄 Si alguien no puede asistir, entra el siguiente en la tabla</li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">⚖️ Desempates</h4>
-                        <p class="pl-4">1️⃣ Veces en 1er lugar 2️⃣ Veces en 2do lugar 3️⃣ Veces en 3er lugar 🎩 Veces como anfitrión</p>
-                    </div>
-
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">💵 Premios</h4>
-                        <ul class="space-y-2 pl-4">
-                            <li>• 🏆 Ganador de la temporada: $xx.xx</li>
-                            <li>• 🃏 Mesa de finalistas:</li>
-                            <li class="pl-4">o 🥇 1er lugar: $xx.xx</li>
-                            <li class="pl-4">o 🥈 2do lugar: $xx.xx</li>
-                            <li class="pl-4">o 🥉 3er lugar: $50</li>
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">⏱ Estructura de Blinds</h4>
-                        <div class="bg-green-900 rounded-lg p-4 overflow-x-auto">
-                            <table class="w-full text-xs">
-                                <thead>
-                                    <tr class="border-b border-green-600">
-                                        <th class="p-2">🧮 Nivel</th>
-                                        <th class="p-2">💵 Small Blind</th>
-                                        <th class="p-2">💵 Big Blind</th>
-                                        <th class="p-2">⏳ Duración</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">1</td><td class="p-2 text-center">50</td><td class="p-2 text-center">100</td><td class="p-2 text-center">15 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">2</td><td class="p-2 text-center">100</td><td class="p-2 text-center">200</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">3</td><td class="p-2 text-center">200</td><td class="p-2 text-center">400</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">4</td><td class="p-2 text-center">300</td><td class="p-2 text-center">600</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">5</td><td class="p-2 text-center">500</td><td class="p-2 text-center">1000</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">6</td><td class="p-2 text-center">1000</td><td class="p-2 text-center">2000</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">7</td><td class="p-2 text-center">2000</td><td class="p-2 text-center">4000</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">8</td><td class="p-2 text-center">4000</td><td class="p-2 text-center">8000</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">9</td><td class="p-2 text-center">5000</td><td class="p-2 text-center">10000</td><td class="p-2 text-center">10 min</td></tr>
-                                    <tr class="border-b border-green-800"><td class="p-2 text-center">10</td><td class="p-2 text-center">10000</td><td class="p-2 text-center">20000</td><td class="p-2 text-center">10 min</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h4 class="text-lg font-semibold text-green-300 mb-3">📜 REGLAS GENERALES</h4>
-                        <ul class="space-y-2 pl-4 text-sm">
-                            <li>• 🃏 Dealer inicial: carta más alta (en empate, se reparte otra)</li>
-                            <li>• 🧍‍♂️ Final de mesa: cuando quedan 3 jugadores</li>
-                            <li>• ⚔️ Eliminación simultánea: se usa el stack inicial para definir posición</li>
-                            <li>• 💱 Cambio de fichas: se reemplazan fichas pequeñas por grandes; fracciones se redondean</li>
-                            <li>• ❌ Misdeals:</li>
-                            <li class="pl-4">o 🃎 Cartas expuestas por el dealer</li>
-                            <li class="pl-4">o 🃎 Más de 2 cartas adicionales en mano inicial</li>
-                            <li class="pl-4">o 🃎 Cartas encajonadas</li>
-                            <li class="pl-4">o 🃎 Reparto a asiento vacío o falta de reparto a jugador activo</li>
-                            <li class="pl-4">o 🃎 Reparto fuera de secuencia</li>
-                            <li class="pl-4">o 🃎 Cantidad incorrecta de cartas (si no se puede corregir sin alterar secuencia)</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </div>
+/************************************
+ * Subcomponentes funcionales
+ ************************************/
+function PhotoInput({ value, onChange, label, fullContain = true }) {
+  const handleFile = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const url = URL.createObjectURL(file);
+    onChange(url);
+  };
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <label className="w-24 h-24 rounded-xl overflow-hidden bg-green-50 border border-green-200 flex items-center justify-center">
+        {value ? (
+          <img
+            src={value}
+            alt={label}
+            className={`w-full h-full ${fullContain ? "object-contain" : "object-cover"}`}
+          />
+        ) : (
+          <img src={EMPTY_AVATAR} alt="anónimo" className="w-full h-full object-contain" />
+        )}
+        <input type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      </label>
+      {label && <span className="text-xs text-gray-600">{label}</span>}
     </div>
+  );
+}
 
-    <script>
-        // Global data
-        let players = [
-            { id: 1, name: '', photo: null, paid: false },
-            { id: 2, name: '', photo: null, paid: false },
-            { id: 3, name: '', photo: null, paid: false }
-        ];
+function TogglePaid({ paid, onToggle }) {
+  return (
+    <div className="flex w-full rounded-xl overflow-hidden border text-sm">
+      <button
+        className={`flex-1 px-3 py-2 font-medium ${paid ? "bg-white text-gray-700" : "bg-red-600 text-white"}`}
+        onClick={() => onToggle(false)}
+      >
+        No pagado
+      </button>
+      <button
+        className={`flex-1 px-3 py-2 font-medium ${paid ? "bg-green-600 text-white" : "bg-white text-gray-700"}`}
+        onClick={() => onToggle(true)}
+      >
+        Pagado
+      </button>
+    </div>
+  );
+}
 
-        const officialDates = [
-            { date: '12 Septiembre', played: true },
-            { date: '26 Septiembre', played: false },
-            { date: '24 Octubre', played: false },
-            { date: '21 Noviembre', played: false },
-            { date: '12 Diciembre', played: false },
-            { date: '30 Enero', played: false },
-            { date: '27 Febrero', played: false },
-            { date: '27 Marzo', played: false },
-            { date: '24 Abril', played: false },
-            { date: '29 Mayo', played: false }
-        ];
+function PlayerCard({ player, onChange }) {
+  return (
+    <div className="p-3 bg-white rounded-2xl shadow-sm border flex gap-3 items-center">
+      <PhotoInput value={player.photo} onChange={(url) => onChange({ ...player, photo: url })} />
+      <div className="flex-1">
+        <input
+          className="w-full text-base font-medium bg-transparent outline-none border-b border-gray-200 focus:border-green-600 py-1"
+          placeholder="Nombre y apellidos"
+          value={player.name}
+          onChange={(e) => onChange({ ...player, name: e.target.value })}
+        />
+        <div className="mt-2">
+          <TogglePaid
+            paid={player.paid}
+            onToggle={(v) => onChange({ ...player, paid: v })}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        let matches = officialDates.map((dateInfo, index) => ({
-            id: index + 1,
-            date: dateInfo.date,
-            played: dateInfo.played,
-            isFloating: false,
-            host: '',
-            showHost: false,
-            mesa1: { first: '', second: '', third: '', photo: null },
-            mesa2: { first: '', second: '', third: '', photo: null }
-        }));
+function PodioInputs({ finalists, setFinalists, players }) {
+  const options = ["", ...players.map((p) => p.name).filter(Boolean)];
+  return (
+    <div className="grid grid-cols-1 gap-2">
+      <SelectField label="🥇 1º" value={finalists.first} onChange={(v) => setFinalists({ ...finalists, first: v })} options={options} />
+      <SelectField label="🥈 2º" value={finalists.second} onChange={(v) => setFinalists({ ...finalists, second: v })} options={options} />
+      <SelectField label="🥉 3º" value={finalists.third} onChange={(v) => setFinalists({ ...finalists, third: v })} options={options} />
+    </div>
+  );
+}
 
-        let floatingMatches = [];
+function SelectField({ label, value, onChange, options }) {
+  return (
+    <label className="flex items-center gap-2 text-sm">
+      <span className="w-16 text-gray-700 shrink-0">{label}</span>
+      <select
+        className="flex-1 px-3 py-2 bg-white border rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      >
+        {options.map((op) => (
+          <option key={op} value={op}>
+            {op || "—"}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
 
-        // Navigation
-        function showSection(sectionName) {
-            // Hide all sections
-            document.querySelectorAll('.section').forEach(section => {
-                section.classList.add('hidden');
-            });
+function IntegrantesSelector({ value, onChange, players }) {
+  const toggle = (id) => {
+    const set = new Set(value);
+    if (set.has(id)) set.delete(id);
+    else set.add(id);
+    onChange([...set]);
+  };
+  return (
+    <div className="grid grid-cols-2 gap-2">
+      {players.map((p) => (
+        <label key={p.id} className="flex items-center gap-2 text-sm bg-white border rounded-xl px-2 py-2">
+          <input
+            type="checkbox"
+            checked={value.includes(p.id)}
+            onChange={() => toggle(p.id)}
+          />
+          <span className="truncate">{p.name || "(vacío)"}</span>
+        </label>
+      ))}
+    </div>
+  );
+}
 
-            // Remove active class from all nav buttons
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.classList.remove('bg-green-800', 'text-white', 'border-b-2', 'border-green-300');
-                btn.classList.add('text-green-100', 'hover:bg-green-600');
-            });
+function MesaEditor({ mesa, setMesa, players }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="p-3 bg-white rounded-2xl shadow-sm border space-y-3">
+      <div className="flex items-center justify-between">
+        <h4 className="font-semibold">{mesa.name}</h4>
+        <button className="text-sm text-green-700 underline" onClick={() => setOpen((v) => !v)}>
+          {open ? "Ocultar integrantes" : "Mostrar integrantes"}
+        </button>
+      </div>
 
-            // Show selected section
-            document.getElementById(sectionName + '-section').classList.remove('hidden');
+      <div className="grid grid-cols-2 gap-3">
+        <PhotoInput
+          value={mesa.photo}
+          onChange={(url) => setMesa({ ...mesa, photo: url })}
+          label="Subir foto"
+          fullContain
+        />
+        <PodioInputs
+          finalists={mesa.finalists}
+          setFinalists={(f) => setMesa({ ...mesa, finalists: f })}
+          players={players}
+        />
+      </div>
 
-            // Add active class to selected nav button
-            const activeBtn = document.getElementById('nav-' + sectionName);
-            activeBtn.classList.add('bg-green-800', 'text-white', 'border-b-2', 'border-green-300');
-            activeBtn.classList.remove('text-green-100', 'hover:bg-green-600');
+      {open && (
+        <div className="pt-2">
+          <div className="text-xs text-gray-500 mb-2">Selecciona los integrantes de la mesa</div>
+          <IntegrantesSelector
+            value={mesa.integrantes}
+            onChange={(list) => setMesa({ ...mesa, integrantes: list })}
+            players={players}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
 
-            // Update content if needed
-            if (sectionName === 'players') {
-                renderPlayers();
-            } else if (sectionName === 'matches') {
-                renderMatches();
-            } else if (sectionName === 'ranking') {
-                renderRanking();
-            }
+function PartidaCard({ partida, setPartida, players, floatingCount, canCreateFloating, onCreateFloating }) {
+  return (
+    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="px-2 py-1 text-xs rounded-full bg-emerald-700 text-white">
+          {partida.isFloating ? "FLOTANTE" : "OFICIAL"}
+        </span>
+        <input
+          type="date"
+          className="px-3 py-2 rounded-xl border bg-white"
+          value={partida.date}
+          onChange={(e) => setPartida({ ...partida, date: e.target.value })}
+        />
+        <span className="text-xs text-gray-600">{partida.label || ""}</span>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <span className="w-20 text-gray-700 shrink-0">Anfitrión</span>
+        <select
+          className="flex-1 px-3 py-2 bg-white border rounded-xl"
+          value={partida.host}
+          onChange={(e) => setPartida({ ...partida, host: e.target.value })}
+        >
+          <option value="">—</option>
+          {players
+            .filter((p) => p.name.trim())
+            .map((p) => (
+              <option key={p.id} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+        </select>
+      </label>
+
+      <div className="grid grid-cols-1 gap-3">
+        {partida.mesas.map((m, idx) => (
+          <MesaEditor
+            key={m.id}
+            mesa={m}
+            setMesa={(newMesa) => {
+              const copy = { ...partida, mesas: [...partida.mesas] };
+              copy.mesas[idx] = newMesa;
+              setPartida(copy);
+            }}
+            players={players}
+          />
+        ))}
+      </div>
+
+      {canCreateFloating && (
+        <div className="flex items-center justify-between pt-2">
+          <span className="text-xs text-gray-600">Partidas flotantes creadas: {floatingCount}/{MAX_FLOATING_PER_YEAR}</span>
+          <button
+            className="px-3 py-2 rounded-xl bg-green-600 text-white text-sm"
+            onClick={onCreateFloating}
+          >
+            + Crear partida flotante
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/************************************
+ * Vistas principales
+ ************************************/
+function JugadoresView({ state, setState }) {
+  const { players } = state;
+  const updatePlayer = (i, p) => {
+    const next = [...players];
+    next[i] = p;
+    setState({ ...state, players: next });
+  };
+
+  const filled = players.filter((p) => p.name.trim()).length;
+
+  return (
+    <div className="p-4 space-y-3">
+      <div className="text-sm text-gray-600">Jugadores: {filled}/{MAX_PLAYERS}</div>
+      {players.map((p, i) => (
+        <PlayerCard key={p.id} player={p} onChange={(np) => updatePlayer(i, np)} />
+      ))}
+    </div>
+  );
+}
+
+function PartidasView({ state, setState }) {
+  const { partidas, players } = state;
+
+  const floatingCount = partidas.filter((p) => p.isFloating).length;
+  const canCreateFloating = floatingCount < MAX_FLOATING_PER_YEAR;
+
+  const updatePartida = (i, np) => {
+    const next = [...partidas];
+    next[i] = np;
+    setState({ ...state, partidas: next });
+  };
+
+  const createFloating = () => {
+    if (!canCreateFloating) return;
+    const newP = {
+      id: uid(),
+      date: new Date().toISOString().slice(0, 10),
+      label: "(Flotante)",
+      isFloating: true,
+      host: "",
+      mesas: [
+        { id: uid(), name: "Mesa 1", finalists: { first: "", second: "", third: "" }, integrantes: [], photo: "" },
+        { id: uid(), name: "Mesa 2", finalists: { first: "", second: "", third: "" }, integrantes: [], photo: "" },
+      ],
+    };
+    setState({ ...state, partidas: [...partidas, newP] });
+  };
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="sticky top-[100px] z-20 -mx-4 px-4 py-2 bg-white/90 backdrop-blur border-b">
+        <button
+          className="w-full py-3 rounded-2xl bg-green-700 text-white font-medium"
+          onClick={createFloating}
+          disabled={!canCreateFloating}
+        >
+          ➕ Crear partida flotante (máx {MAX_FLOATING_PER_YEAR}/año)
+        </button>
+        {!canCreateFloating && (
+          <div className="text-xs text-red-600 mt-1">Has alcanzado el máximo de partidas flotantes.</div>
+        )}
+      </div>
+
+      {partidas
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .map((p, i) => (
+          <PartidaCard
+            key={p.id}
+            partida={p}
+            setPartida={(np) => updatePartida(i, np)}
+            players={players}
+            floatingCount={floatingCount}
+            canCreateFloating={false}
+            onCreateFloating={createFloating}
+          />
+        ))}
+    </div>
+  );
+}
+
+function ClasificacionView({ state }) {
+  const rows = useMemo(() => computeLeaderboard(state.players, state.partidas), [state]);
+  return (
+    <div className="p-4">
+      <div className="bg-white border rounded-2xl overflow-hidden">
+        <div className="grid grid-cols-6 text-xs font-semibold bg-emerald-700 text-white">
+          <div className="col-span-4 px-3 py-2">Jugador</div>
+          <div className="px-3 py-2 text-center">Mej.12</div>
+          <div className="px-3 py-2 text-center">Puntos</div>
+        </div>
+        {rows.map((r, idx) => (
+          <div key={idx} className="grid grid-cols-6 text-sm border-t">
+            <div className="col-span-4 px-3 py-2 flex items-center gap-2">
+              <span className="text-gray-500">{idx + 1}.</span>
+              <span className="font-medium">{r.name}</span>
+            </div>
+            <div className="px-3 py-2 text-center text-gray-700">{r.best12Count}</div>
+            <div className="px-3 py-2 text-center font-semibold">{r.total}</div>
+          </div>
+        ))}
+        {!rows.length && (
+          <div className="px-3 py-6 text-center text-gray-500">Sin resultados aún.</div>
+        )}
+      </div>
+      <div className="text-xs text-gray-500 mt-2">Reglas de puntos: 🥇 6 • 🥈 3 • 🥉 1 (se suman las 12 mejores mesas)</div>
+    </div>
+  );
+}
+
+function ReglasView() {
+  return (
+    <div className="p-4 space-y-3 text-sm leading-relaxed">
+      <h3 className="text-lg font-semibold">🎯 REGLAS DEL TORNEO</h3>
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">💰 Entrada</h4>
+        <ul className="list-disc pl-5">
+          <li>Costo: $50 USD</li>
+          <li>💳 Pago a: Eliuth Triana</li>
+          <li>🧾 Los participantes no acumularán puntos para la clasificación general hasta confirmar participación y pago</li>
+        </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">🃏 Participantes externos</h4>
+        <ul className="list-disc pl-5">
+          <li>👥 Pueden jugar en las mesas (a discreción del anfitrión)</li>
+          <li>🏆 Acceden al premio de la mesa</li>
+          <li>🚫 No acumulan puntos para el torneo</li>
+        </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">📅 Fechas oficiales</h4>
+        <ul className="list-disc pl-5">
+          <li>🗓 12 Septiembre</li>
+          <li>🗓 26 Septiembre</li>
+          <li>🗓 24 Octubre</li>
+          <li>🗓 21 Noviembre</li>
+          <li>🗓 12 Diciembre</li>
+          <li>🗓 30 Enero</li>
+          <li>🗓 27 Febrero</li>
+          <li>🗓 27 Marzo</li>
+          <li>🗓 24 Abril</li>
+          <li>🗓 29 Mayo</li>
+        </ul>
+        <div className="pt-2"><b>🎉 Gran Final</b> • 📍 Fecha: 12 de Junio</div>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">🏆 Sistema de puntuación</h4>
+        <ul className="list-disc pl-5">
+          <li>🥇 1er lugar: 6 puntos</li>
+          <li>🥈 2do lugar: 3 puntos</li>
+          <li>🥉 3er lugar: 1 punto</li>
+          <li>📊 Se consideran las 12 mejores mesas</li>
+          <li>➕ Si no se llega a 12, se suman los puntos acumulados</li>
+        </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">🎖 Finalistas</h4>
+        <ul className="list-disc pl-5">
+          <li>👑 Los 6 mejores jugadores acceden a la mesa final</li>
+          <li>🔄 Si alguien no puede asistir, entra el siguiente en la tabla</li>
+        </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">⚖️ Desempates</h4>
+        <div>1️⃣ Veces en 1er lugar 2️⃣ Veces en 2do lugar 3️⃣ Veces en 3er lugar 🎩 Veces como anfitrión</div>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">💵 Premios</h4>
+        <ul className="list-disc pl-5">
+          <li>🏆 Ganador de la temporada: $xx.xx</li>
+          <li>🃏 Mesa de finalistas:</li>
+          <ul className="list-disc pl-8">
+            <li>🥇 1er lugar: $xx.xx</li>
+            <li>🥈 2do lugar: $xx.xx</li>
+            <li>🥉 3er lugar: $50</li>
+          </ul>
+        </ul>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">⏱ Estructura de Blinds</h4>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left text-gray-600">
+              <th className="py-1">🧮 Nivel</th>
+              <th className="py-1">💵 Small Blind</th>
+              <th className="py-1">💵 Big Blind</th>
+              <th className="py-1">⏳ Duración</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              [1, 50, 100, "15 min"],
+              [2, 100, 200, "10 min"],
+              [3, 200, 400, "10 min"],
+              [4, 300, 600, "10 min"],
+              [5, 500, 1000, "10 min"],
+              [6, 1000, 2000, "10 min"],
+              [7, 2000, 4000, "10 min"],
+              [8, 4000, 8000, "10 min"],
+              [9, 5000, 10000, "10 min"],
+              [10, 10000, 20000, "10 min"],
+            ].map((r) => (
+              <tr key={r[0]} className="border-t">
+                <td className="py-1">{r[0]}</td>
+                <td className="py-1">{r[1]}</td>
+                <td className="py-1">{r[2]}</td>
+                <td className="py-1">{r[3]}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
+      <section className="bg-white rounded-2xl border p-3 space-y-2">
+        <h4 className="font-semibold">📜 REGLAS GENERALES</h4>
+        <ul className="list-disc pl-5">
+          <li>🃏 Dealer inicial: carta más alta (en empate, se reparte otra)</li>
+          <li>🧍‍♂️ Final de mesa: cuando quedan 3 jugadores</li>
+          <li>⚔️ Eliminación simultánea: se usa el stack inicial para definir posición</li>
+          <li>💱 Cambio de fichas: se reemplazan fichas pequeñas por grandes; fracciones se redondean</li>
+          <li>❌ Misdeals:
+            <ul className="list-disc pl-5 mt-1">
+              <li>🃎 Cartas expuestas por el dealer</li>
+              <li>🃎 Más de 2 cartas adicionales en mano inicial</li>
+              <li>🃎 Cartas encajonadas</li>
+              <li>🃎 Reparto a asiento vacío o falta de reparto a jugador activo</li>
+              <li>🃎 Reparto fuera de secuencia</li>
+              <li>🃎 Cantidad incorrecta de cartas (si no se puede corregir sin alterar secuencia)</li>
+            </ul>
+          </li>
+        </ul>
+      </section>
+    </div>
+  );
+}
+
+function CopiasView({ state, setState }) {
+  const exportJson = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "poker_dashboard_backup.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const importJson = (file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(String(reader.result));
+        if (data && data.players && data.partidas) {
+          setState(data);
+        } else {
+          alert("Archivo inválido");
         }
+      } catch (e) {
+        alert("Error al leer el JSON");
+      }
+    };
+    reader.readAsText(file);
+  };
 
-        // Players functions
-        function addPlayer() {
-            if (players.length < 15) {
-                players.push({
-                    id: Date.now(),
-                    name: '',
-                    photo: null,
-                    paid: false
-                });
-                renderPlayers();
-            }
-        }
+  return (
+    <div className="p-4 space-y-3">
+      <div className="bg-white border rounded-2xl p-4">
+        <h4 className="font-semibold mb-2">Copias de seguridad</h4>
+        <div className="flex flex-col gap-2">
+          <button className="px-4 py-3 rounded-2xl bg-green-700 text-white" onClick={exportJson}>
+            ⬇️ Exportar JSON
+          </button>
+          <label className="px-4 py-3 rounded-2xl border bg-white text-center">
+            ⬆️ Importar JSON
+            <input
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])}
+            />
+          </label>
+          <p className="text-xs text-gray-500">Consejo: comparte el JSON en el grupo para que cualquiera pueda restaurar el estado.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-        function updatePlayer(id, field, value) {
-            players = players.map(player => 
-                player.id === id ? { ...player, [field]: value } : player
-            );
-            renderPlayers();
-            if (!document.getElementById('matches-section').classList.contains('hidden')) {
-                renderMatches();
-            }
-        }
+/************************************
+ * App principal
+ ************************************/
+export default function App() {
+  const [tab, setTab] = useState("jugadores");
+  const [state, setState] = useState(() => load("poker_state_v1", defaultState));
 
-        function handlePhotoUpload(playerId, event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    updatePlayer(playerId, 'photo', e.target.result);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
+  // Persistencia automática
+  useEffect(() => {
+    save("poker_state_v1", state);
+  }, [state]);
 
-        function renderPlayers() {
-            const container = document.getElementById('players-container');
-            container.innerHTML = '';
+  return (
+    <div className="min-h-[100dvh] bg-emerald-100/40 text-gray-900">
+      <AppHeader />
+      <TabBar tab={tab} setTab={setTab} />
 
-            players.forEach(player => {
-                const playerDiv = document.createElement('div');
-                playerDiv.className = 'bg-gradient-to-r from-green-800 to-green-900 rounded-xl p-4 shadow-lg';
-                
-                playerDiv.innerHTML = `
-                    <div class="flex items-center space-x-4">
-                        <div class="relative">
-                            <div onclick="selectPhoto(${player.id})" class="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center cursor-pointer hover:bg-green-600 transition-colors overflow-hidden">
-                                ${player.photo ? 
-                                    `<img src="${player.photo}" alt="Jugador" class="w-full h-full object-cover rounded-full">` :
-                                    `<span class="text-green-300 text-2xl">📷</span>`
-                                }
-                            </div>
-                            <input type="file" id="photo-${player.id}" accept="image/*" onchange="handlePhotoUpload(${player.id}, event)" class="hidden">
-                        </div>
-                        
-                        <div class="flex-1">
-                            <input
-                                type="text"
-                                placeholder="Nombre y Apellidos"
-                                value="${player.name}"
-                                onchange="updatePlayer(${player.id}, 'name', this.value)"
-                                class="w-full bg-green-700 text-white placeholder-green-300 px-3 py-2 rounded-lg border border-green-600 focus:border-green-400 focus:outline-none"
-                            />
-                        </div>
-                    </div>
-                    
-                    <div class="mt-3">
-                        <button
-                            onclick="updatePlayer(${player.id}, 'paid', ${!player.paid})"
-                            class="w-full py-2 px-4 rounded-lg font-medium transition-all ${
-                                player.paid 
-                                    ? 'bg-green-500 hover:bg-green-400 text-white' 
-                                    : 'bg-red-600 hover:bg-red-500 text-white'
-                            }"
-                        >
-                            ${player.paid ? '✅ PAGADO' : '❌ NO PAGADO'}
-                        </button>
-                    </div>
-                `;
-                
-                container.appendChild(playerDiv);
-            });
-        }
+      {tab === "jugadores" && <JugadoresView state={state} setState={setState} />}
+      {tab === "partidas" && <PartidasView state={state} setState={setState} />}
+      {tab === "clasificacion" && <ClasificacionView state={state} />}
+      {tab === "reglas" && <ReglasView />}
+      {tab === "copias" && <CopiasView state={state} setState={setState} />}
 
-        function selectPhoto(playerId) {
-            document.getElementById(`photo-${playerId}`).click();
-        }
-
-        // Matches functions
-        function addFloatingMatch() {
-            const newMatch = {
-                id: Date.now(),
-                date: '',
-                played: false,
-                isFloating: true,
-                host: '',
-                showHost: false,
-                mesa1: { first: '', second: '', third: '', photo: null },
-                mesa2: { first: '', second: '', third: '', photo: null }
-            };
-            floatingMatches.push(newMatch);
-            matches.push(newMatch);
-            renderMatches();
-        }
-
-        function updateMatch(matchId, field, value, mesa = null) {
-            const updateFn = (match) => {
-                if (match.id === matchId) {
-                    if (mesa) {
-                        return { ...match, [mesa]: { ...match[mesa], [field]: value } };
-                    }
-                    return { ...match, [field]: value };
-                }
-                return match;
-            };
-            
-            matches = matches.map(updateFn);
-            floatingMatches = floatingMatches.map(updateFn);
-            renderMatches();
-        }
-
-        function toggleHost(matchId) {
-            const updateFn = (match) => 
-                match.id === matchId ? { ...match, showHost: !match.showHost } : match;
-            
-            matches = matches.map(updateFn);
-            floatingMatches = floatingMatches.map(updateFn);
-            renderMatches();
-        }
-
-        function handleMesaPhotoUpload(matchId, mesa, event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    updateMatch(matchId, 'photo', e.target.result, mesa);
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function selectMesaPhoto(matchId, mesa) {
-            document.getElementById(`mesa-photo-${matchId}-${mesa}`).click();
-        }
-
-        function renderMatches() {
-            const container = document.getElementById('matches-container');
-            container.innerHTML = '';
-
-            const allMatches = [...matches.filter(m => !m.isFloating), ...floatingMatches];
-
-            allMatches.forEach(match => {
-                const matchDiv = document.createElement('div');
-                matchDiv.className = 'bg-gradient-to-br from-green-800 to-green-900 rounded-xl shadow-lg overflow-hidden';
-                
-                const playerOptions = players.filter(p => p.name.trim()).map(player => 
-                    `<option value="${player.name}">${player.name}</option>`
-                ).join('');
-
-                matchDiv.innerHTML = `
-                    <div class="p-4 bg-green-700 flex justify-between items-center">
-                        <div>
-                            <h4 class="font-bold text-lg">
-                                ${match.isFloating ? 
-                                    `<input type="text" placeholder="Fecha (ej: 15 Octubre)" value="${match.date}" onchange="updateMatch(${match.id}, 'date', this.value)" class="bg-green-600 text-white placeholder-green-300 px-2 py-1 rounded border border-green-500 focus:border-green-300 focus:outline-none">` :
-                                    match.date
-                                }
-                                ${match.isFloating ? '<span class="ml-2 text-sm bg-yellow-600 px-2 py-1 rounded">FLOTANTE</span>' : ''}
-                            </h4>
-                        </div>
-                        <button onclick="toggleHost(${match.id})" class="text-green-300 hover:text-green-100">
-                            ${match.showHost ? '🔼' : '🔽'}
-                        </button>
-                    </div>
-
-                    ${match.showHost ? `
-                        <div class="p-4 bg-green-750">
-                            <input type="text" placeholder="Nombre del Anfitrión" value="${match.host}" onchange="updateMatch(${match.id}, 'host', this.value)" class="w-full bg-green-700 text-white placeholder-green-300 px-3 py-2 rounded-lg border border-green-600 focus:border-green-400 focus:outline-none">
-                        </div>
-                    ` : ''}
-
-                    <div class="p-4 space-y-6">
-                        ${['mesa1', 'mesa2'].map((mesa, index) => `
-                            <div class="bg-green-800 rounded-lg p-4">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h5 class="font-semibold text-green-300">Mesa ${index + 1}</h5>
-                                    <button onclick="selectMesaPhoto(${match.id}, '${mesa}')" class="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors">
-                                        <span>📷</span>
-                                        <span>Foto Mesa</span>
-                                    </button>
-                                    <input type="file" id="mesa-photo-${match.id}-${mesa}" accept="image/*" onchange="handleMesaPhotoUpload(${match.id}, '${mesa}', event)" class="hidden">
-                                </div>
-
-                                ${match[mesa].photo ? `
-                                    <div class="mb-4">
-                                        <img src="${match[mesa].photo}" alt="Foto Mesa ${index + 1}" class="w-full h-auto max-h-64 object-contain rounded-lg border-2 border-green-600">
-                                    </div>
-                                ` : ''}
-
-                                <div class="grid gap-3">
-                                    ${['first', 'second', 'third'].map((position, posIndex) => `
-                                        <div class="flex items-center space-x-3">
-                                            <span class="text-sm font-medium text-green-300 w-12">
-                                                ${posIndex === 0 ? '🥇 1°' : posIndex === 1 ? '🥈 2°' : '🥉 3°'}
-                                            </span>
-                                            <select
-                                                value="${match[mesa][position] || ''}"
-                                                onchange="updateMatch(${match.id}, '${position}', this.value, '${mesa}')"
-                                                class="flex-1 bg-green-700 text-white px-3 py-2 rounded border border-green-600 focus:border-green-400 focus:outline-none"
-                                            >
-                                                <option value="">Seleccionar jugador</option>
-                                                ${playerOptions}
-                                            </select>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
-                
-                container.appendChild(matchDiv);
-            });
-        }
-
-        function renderRanking() {
-            const container = document.getElementById('ranking-container');
-            
-            // Calculate player rankings
-            const playerStats = {};
-            
-            // Initialize stats for all players
-            players.forEach(player => {
-                if (player.name.trim()) {
-                    playerStats[player.name] = {
-                        name: player.name,
-                        points: 0,
-                        first: 0,
-                        second: 0,
-                        third: 0,
-                        hostCount: 0,
-                        paid: player.paid
-                    };
-                }
-            });
-
-            // Calculate points from matches
-            const allMatches = [...matches.filter(m => !m.isFloating), ...floatingMatches];
-            allMatches.forEach(match => {
-                if (match.host && playerStats[match.host]) {
-                    playerStats[match.host].hostCount++;
-                }
-
-                ['mesa1', 'mesa2'].forEach(mesa => {
-                    const mesaData = match[mesa];
-                    if (mesaData.first && playerStats[mesaData.first]) {
-                        playerStats[mesaData.first].points += 6;
-                        playerStats[mesaData.first].first++;
-                    }
-                    if (mesaData.second && playerStats[mesaData.second]) {
-                        playerStats[mesaData.second].points += 3;
-                        playerStats[mesaData.second].second++;
-                    }
-                    if (mesaData.third && playerStats[mesaData.third]) {
-                        playerStats[mesaData.third].points += 1;
-                        playerStats[mesaData.third].third++;
-                    }
-                });
-            });
-
-            // Sort players by ranking criteria
-            const sortedPlayers = Object.values(playerStats).sort((a, b) => {
-                if (b.points !== a.points) return b.points - a.points;
-                if (b.first !== a.first) return b.first - a.first;
-                if (b.second !== a.second) return b.second - a.second;
-                if (b.third !== a.third) return b.third - a.third;
-                return b.hostCount - a.hostCount;
-            });
-
-            if (sortedPlayers.length === 0) {
-                container.innerHTML = `
-                    <p class="text-center text-green-300 text-lg mb-6">
-                        El ranking se actualizará automáticamente basado en los resultados de las partidas.
-                    </p>
-                `;
-                return;
-            }
-
-            container.innerHTML = `
-                <div class="space-y-4">
-                    ${sortedPlayers.map((player, index) => `
-                        <div class="flex items-center justify-between p-4 bg-green-700 rounded-lg ${!player.paid ? 'opacity-75 border-2 border-red-500' : ''}">
-                            <div class="flex items-center space-x-4">
-                                <span class="text-2xl font-bold text-green-300">${index + 1}</span>
-                                <div>
-                                    <div class="font-semibold text-lg">${player.name}</div>
-                                    <div class="text-sm text-green-300">
-                                        🥇${player.first} 🥈${player.second} 🥉${player.third} 🎩${player.hostCount}
-                                    </div>
-                                    ${!player.paid ? '<div class="text-xs text-red-300">⚠️ No pagado - Sin puntos oficiales</div>' : ''}
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-2xl font-bold text-yellow-400">${player.paid ? player.points : 0}</div>
-                                <div class="text-sm text-green-300">puntos</div>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
-        }
-
-        // Export/Import functions
-        function exportData() {
-            const data = {
-                players,
-                matches: [...matches, ...floatingMatches],
-                exportDate: new Date().toISOString()
-            };
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'poker-tournament-backup.json';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    try {
-                        const data = JSON.parse(e.target.result);
-                        if (data.players) {
-                            players = data.players;
-                        }
-                        if (data.matches) {
-                            const official = data.matches.filter(m => !m.isFloating);
-                            const floating = data.matches.filter(m => m.isFloating);
-                            matches = official;
-                            floatingMatches = floating;
-                        }
-                        // Refresh current view
-                        const currentSection = document.querySelector('.section:not(.hidden)').id.replace('-section', '');
-                        showSection(currentSection);
-                        alert('Datos importados correctamente');
-                    } catch (error) {
-                        alert('Error al importar el archivo. Verifica que sea un archivo JSON válido.');
-                    }
-                };
-                reader.readAsText(file);
-            }
-        }
-
-        // Initialize app
-        document.addEventListener('DOMContentLoaded', function() {
-            showSection('players');
-        });
-    </script>
-</body>
-</html>
+      <footer className="py-12" />
+    </div>
+  );
+}
