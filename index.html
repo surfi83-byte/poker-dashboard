@@ -16,6 +16,25 @@
     <style>
         body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
     </style>
+    <!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
+// 🔧 Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyD5VMnoiy4z6nzWG9B3y8zjW5O6dV6suDo",
+  authDomain: "pockerbackend.firebaseapp.com",
+  projectId: "PokerDashboard2025",
+  storageBucket: "PokerDashboard2025.appspot.com",
+  messagingSenderId: "128909977411",
+  appId: "1:128909977411:web:364e9531c09c7ebcee31f6"
+};
+// 🚀 Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+
+// 🔐 Enable services
+const auth = firebase.auth();
+const db = firebase.firestore();
 </head>
 <body>
     <div id="root"></div>
@@ -1367,3 +1386,4 @@
     </script>
 </body>
 </html>
+
