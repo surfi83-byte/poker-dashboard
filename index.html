@@ -10,14 +10,11 @@
 <!-- React y Babel -->
 <script crossorigin="" src="https://unpkg.com/react@18/umd/react.development.js"></script>
 <script crossorigin="" src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
         body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
     </style>
-</head>
-<body>
-<div id="root"></div>
-<script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script><script>
 // Firebase initialization (no authentication)
 const firebaseConfig = { 
   apiKey: "AIzaSyD5VMnoiy4z6nzWG9B3y8zjW5O6dV6suDo",
@@ -33,9 +30,43 @@ if (!firebase.apps.length) {
 }
 
 // Expose Firestore without requiring any authentication
-// NOTE: For truly public, unauthenticated access you must set Firestore Security Rules accordingly.
 window.db = firebase.firestore();
-</script><script type="text/babel">
+</script><script>
+// --- Firestore real-time + diagnostics ---
+try {
+  firebase.firestore().settings({ experimentalForceLongPolling: true, ignoreUndefinedProperties: true });
+} catch (e) {
+  console.warn('Firestore settings already applied or not supported:', e);
+}
+
+window.subscribeCollection = (colPath, orderBy) => {
+  let ref = firebase.firestore().collection(colPath);
+  if (orderBy && orderBy.field) {
+    ref = ref.orderBy(orderBy.field, orderBy.dir || 'asc');
+  }
+  return ref.onSnapshot((snap) => {
+    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    console.log(`[onSnapshot] ${colPath}`, rows);
+  }, (err) => {
+    console.error(`[onSnapshot][ERROR] ${colPath}`, err);
+  });
+};
+
+window.ping = async () => {
+  const t = Date.now();
+  await firebase.firestore().collection('debug').doc('ping').set({ t });
+  console.log('Ping written at', new Date(t).toISOString());
+};
+
+firebase.firestore().collection('debug').doc('ping').onSnapshot((doc) => {
+  console.log('[onSnapshot] debug/ping ->', doc.exists ? doc.data() : null);
+});
+
+console.log('Firebase projectId:', firebase.app().options.projectId);
+</script></head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
         const { useState, useEffect } = React;
         
         // Iconos simples reemplazando lucide-react
