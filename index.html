@@ -1,490 +1,1450 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Poker 2025/2026</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
-  <!-- React + Babel (para un único archivo editable desde móvil) -->
-  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    :root{--bg:#0f1116;--panel:#151a23;--panel2:#10141c;--text:#e8ecf3;--muted:#9aa3b2;--accent:#2fd27a;--danger:#ff5151;--chip:#23283a;--line:#222839}
-    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto;line-height:1.35}
-    header{position:sticky;top:0;background:linear-gradient(180deg,#0f1116,rgba(15,17,22,.85));backdrop-filter:saturate(1.2) blur(8px);z-index:10}
-    .wrap{max-width:980px;margin:0 auto;padding:16px}
-    h1{font-size:22px;margin:0;display:flex;align-items:center;gap:10px}
-    .tag{background:var(--chip);border-radius:999px;padding:6px 10px;font-size:12px;color:var(--muted)}
-    nav{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px}
-    nav a{display:block;text-align:center;padding:10px 8px;background:var(--panel);border-radius:12px;color:var(--text);text-decoration:none;font-weight:600;border:1px solid var(--line)}
-    nav a:hover{background:var(--panel2)}
-    section{padding:18px 16px}
-    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .row>*{flex:1 1 140px}
-    input,select,button,textarea{width:100%;background:#0f1320;border:1px solid #2a3150;color:var(--text);padding:10px;border-radius:10px;font:inherit}
-    button{cursor:pointer;background:linear-gradient(180deg,#1d9d63,#178653);border:none}
-    button.secondary{background:#242a3f}
-    table{width:100%;border-collapse:collapse}
-    th,td{padding:10px;border-bottom:1px solid #20263a;text-align:left}
-    th{color:var(--muted);font-weight:600}
-    .pill{display:inline-flex;align-items:center;gap:6px;background:#1a1f30;border:1px solid #27304a;padding:6px 10px;border-radius:999px;font-size:12px;color:var(--muted)}
-    .ok{color:var(--accent)} .bad{color:var(--danger)}
-    .inline{display:flex;gap:8px;align-items:center}
-    .right{margin-left:auto}
-    .ghost{opacity:.7}
-    .avatar{width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid #2a3150;background:#0c0e17}
-    .mini{font-size:12px;color:var(--muted)}
-    footer{padding:30px;color:var(--muted);text-align:center}
-    .btn-danger{background:linear-gradient(180deg,#e05252,#c93232)}
-    @media (max-width:560px){nav{grid-template-columns:repeat(2,1fr)} th:nth-child(4),td:nth-child(4){display:none}}
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Poker Championship 2025/2026</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React y Babel -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    
+    <style>
+        body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
+    </style>
 </head>
 <body>
-  <header>
-    <div class="wrap">
-      <h1>
-        <span style="font-weight:800">Poker 2025/2026</span>
-        <span class="tag">amigos · público · sin login</span>
-        <span class="pill right"><span id="statusDot">●</span><span id="statusText">offline</span></span>
-      </h1>
-      <nav>
-        <a href="#jugadores">Jugadores</a>
-        <a href="#clasificacion">Clasificación</a>
-        <a href="#partidas">Resultados por partida</a>
-        <a href="#reglas">Reglas</a>
-      </nav>
-    </div>
-  </header>
+    <div id="root"></div>
 
-  <main class="wrap">
-    <section id="jugadores">
-      <h2>👤 Jugadores (hasta 15)</h2>
-      <div class="card">
-        <div class="row">
-          <input id="inpNombre" placeholder="Nombre del jugador">
-          <input id="inpAvatar" placeholder="URL avatar (opcional)">
-          <button id="btnAddJugador">Añadir jugador</button>
-        </div>
-        <div class="mini" style="margin-top:8px">Tip: usa avatar cuadrado 512×512</div>
-      </div>
-      <div class="card">
-        <table>
-          <thead><tr><th>Jugador</th><th>Puntos</th><th>Balance</th><th>ID</th></tr></thead>
-          <tbody id="tbJugadores"></tbody>
-        </table>
-      </div>
-    </section>
+    
+    <!-- Supabase backend bridge (no cambia tu UI) -->
+    <script>
+    // ======= CONFIGURA AQUÍ TUS CLAVES DE SUPABASE (Project Settings → API) =======
+    const SUPABASE_URL  = "https://ynqkncnsqfjtcvvyklvy.supabase.co";   // ← pega tu Project URL
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucWtuY25zcWZqdGN2dnlrbHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDAwMTEsImV4cCI6MjA3MzcxNjAxMX0.YE41Q4eX9UjuocXxF3e2b6lRWNrj7SGyY-LF6REdync";                          // ← pega tu anon public key (NO service_role)
 
-    <section id="clasificacion">
-      <h2>🏆 Clasificación general</h2>
-      <div class="card">
-        <table>
-          <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Balance</th></tr></thead>
-          <tbody id="tbClasificacion"></tbody>
-        </table>
-      </div>
-    </section>
+    // Cliente
+    const __sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    <section id="partidas">
-      <h2>🃏 Resultados por partida</h2>
-      <div class="card">
-        <div class="row">
-          <input id="inpFecha" type="date">
-          <input id="inpBuyIn" type="number" step="1" placeholder="Buy-in (€)">
-          <input id="inpNotas" placeholder="Notas (opcional)">
-          <button id="btnAddPartida">Nueva partida</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <div class="row">
-          <select id="selPartida"></select>
-          <select id="selJugador"></select>
-          <input id="inpPosicion" type="number" min="1" step="1" placeholder="Posición (1=ganador)">
-          <input id="inpPuntos" type="number" step="1" placeholder="Puntos">
-          <input id="inpPremio" type="number" step="1" placeholder="Premio (€)">
-          <button id="btnAddResultado">Añadir resultado</button>
-        </div>
-      </div>
-
-      <div class="card">
-        <table>
-          <thead><tr><th>Fecha</th><th>Jugador</th><th>Posición</th><th>Puntos</th><th>Premio</th></tr></thead>
-          <tbody id="tbResultados"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <section id="reglas">
-      <h2>📜 Reglas</h2>
-      <div class="card">
-        <ul>
-          <li>Hasta 15 jugadores. Puntuación configurable.</li>
-          <li>Buy-in libre. Premios según posición.</li>
-          <li>Sin login: políticas públicas en Supabase (solo para grupos de confianza).</li>
-          <li>Actualiza en directo (Realtime + broadcast). Si la red bloquea sockets: polling.</li>
-        </ul>
-        <p class="mini">Edita las claves en el bloque “Configura tus credenciales” de este HTML.</p>
-      </div>
-    </section>
-  </main>
-
-  <footer>v1 • Supabase Realtime (broadcast + postgres_changes) + Polling</footer>
-
-  <!-- ===================== BACKEND JS (Supabase) ===================== -->
-  <script>
-  // === Configura tus credenciales (copiar de Project Settings → API) ===
-  const SUPABASE_URL  = "https://ynqkncnsqfjtcvvyklvy.supabase.co"; // <- pon aquí tu URL
-  const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucWtuY25zcWZqdGN2dnlrbHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDAwMTEsImV4cCI6MjA3MzcxNjAxMX0.YE41Q4eX9UjuocXxF3e2b6lRWNrj7SGyY-LF6REdync"; // <- y aquí tu anon key (pública)
-
-  // Cliente Supabase
-  const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
-  window.client = client; // por si lo necesitas en consola
-
-  // Estado visual
-  const statusDot  = document.getElementById('statusDot');
-  const statusText = document.getElementById('statusText');
-  function setStatus(txt, ok=false){ statusText.textContent=txt; statusDot.style.color = ok? 'var(--accent)' : 'var(--danger)'; }
-
-  // Helpers
-  const elJug = document.getElementById('tbJugadores');
-  const elCla = document.getElementById('tbClasificacion');
-  const elSelJugador = document.getElementById('selJugador');
-  const elSelPartida = document.getElementById('selPartida');
-  const elRes = document.getElementById('tbResultados');
-
-  function fmtEUR(n){ n=Number(n||0); return n.toLocaleString('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0}); }
-
-  // ---- Renderers (los usa React por debajo) ----
-  window.renderJugadores = (rows=[]) => {
-    // Tabla
-    elJug.innerHTML = rows.map(j => `
-      <tr>
-        <td class="inline">
-          <img class="avatar" src="${j.avatar||''}" onerror="this.style.visibility='hidden'">
-          <strong>${j.nombre||'—'}</strong>
-        </td>
-        <td>${j.puntos ?? 0}</td>
-        <td>${fmtEUR(j.balance)}</td>
-        <td class="ghost mini">${j.id}</td>
-      </tr>
-    `).join('');
-    // Select jugadores
-    elSelJugador.innerHTML = rows.map(j => `<option value="${j.id}">${j.nombre}</option>`).join('');
-    // Notificar a React
-    if (window.__setPlayers) {
-      const mapped = rows.map(r => ({ id:r.id, name:r.nombre, photo:r.avatar||null, paid: !!r.paid, totalPoints:Number(r.puntos||0), gamesPlayed:0, wins:0 }));
-      window.__setPlayers(mapped);
+    // --- Lecturas ---
+    async function __loadJugadores(){
+      const { data, error } = await __sb.from('jugadores').select('*').order('puntos',{ascending:false});
+      if (error) { console.error('jugadores/select', error); return; }
+      if (window.onPlayers) window.onPlayers(data || []);
     }
-  };
-
-  window.renderClasificacion = (rows=[]) => {
-    elCla.innerHTML = rows.map((r,i)=>`
-      <tr><td>${i+1}</td><td>${r.nombre}</td><td><strong>${r.puntos ?? 0}</strong></td><td>${fmtEUR(r.balance)}</td></tr>
-    `).join('');
-    if (window.__setRanking) window.__setRanking(rows);
-  };
-
-  window.renderPartidasSelector = (rows=[]) => {
-    elSelPartida.innerHTML = rows.map(p => `<option value="${p.id}">${p.fecha} · €${p.buy_in}</option>`).join('');
-    if (window.__setGames) window.__setGames(rows);
-  };
-
-  window.renderResultados = (rows=[]) => {
-    elRes.innerHTML = rows.map(r => `
-      <tr>
-        <td>${r.fecha || r.partidas?.fecha || ''}</td>
-        <td>${r.jugador_nombre || r.jugadores?.nombre || ''}</td>
-        <td>${r.posicion ?? ''}</td>
-        <td>${r.puntos ?? 0}</td>
-        <td>${fmtEUR(r.premio)}</td>
-      </tr>
-    `).join('');
-    if (window.__setResults) window.__setResults(rows);
-  };
-
-  // ---- Cargas ----
-  async function loadJugadores(){
-    const { data, error } = await client.from('jugadores').select('*').order('puntos',{ascending:false});
-    if(error){ console.error('jugadores/select',error); return; }
-    window.renderJugadores(data||[]);
-  }
-  async function loadPartidas(){
-    const { data, error } = await client.from('partidas').select('*').order('fecha',{ascending:false});
-    if(error){ console.error('partidas/select',error); return; }
-    window.renderPartidasSelector(data||[]);
-  }
-  async function loadResultados(){
-    // Nota: si no tienes FKs, no habrá join automático; rellenamos fecha/nombre luego si es necesario
-    const { data, error } = await client.from('resultados').select('*').order('created_at',{ascending:false});
-    if(error){ console.error('resultados/select',error); return; }
-    // Enriquecer con nombres/fechas si están en cache (cargadas antes)
-    const js = (await client.from('jugadores').select('id,nombre')).data || [];
-    const ps = (await client.from('partidas').select('id,fecha')).data || [];
-    const jmap = Object.fromEntries(js.map(j=>[j.id,j.nombre]));
-    const pmap = Object.fromEntries(ps.map(p=>[p.id,p.fecha]));
-    const enriched = (data||[]).map(r => ({...r, jugador_nombre: jmap[r.jugador_id] || '', fecha: pmap[r.partida_id] || ''}));
-    window.renderResultados(enriched);
-  }
-  async function loadClasificacion(){
-    // Si existe la vista 'clasificacion', úsala; si no, calcúlala aquí
-    const tryView = await client.from('clasificacion').select('*').order('puntos',{ascending:false});
-    if (!tryView.error && Array.isArray(tryView.data)) {
-      window.renderClasificacion(tryView.data);
-      return;
-    }
-    // Fallback: calcula puntos = jugadores.puntos + sum(resultados.puntos)
-    const js = (await client.from('jugadores').select('id,nombre,puntos,balance')).data || [];
-    const rs = (await client.from('resultados').select('jugador_id,puntos')).data || [];
-    const acc = {};
-    rs.forEach(r => { acc[r.jugador_id] = (acc[r.jugador_id]||0) + Number(r.puntos||0); });
-    const clasif = js.map(j => ({ id:j.id, nombre:j.nombre, puntos:Number(j.puntos||0) + (acc[j.id]||0), balance:j.balance }))
-                     .sort((a,b)=> b.puntos - a.puntos);
-    window.renderClasificacion(clasif);
-  }
-
-  // ---- Escrituras ----
-  async function addJugador(nombre, avatar){
-    const { error } = await client.from('jugadores').insert({ nombre, avatar }).select();
-    if (error) console.error('jugadores/insert', error);
-  }
-  async function updateJugador(id, patch){
-    const { error } = await client.from('jugadores').update(patch).eq('id', id);
-    if (error) console.error('jugadores/update', error);
-  }
-  async function deleteJugador(id){
-    const { error } = await client.from('jugadores').delete().eq('id', id);
-    if (error) console.error('jugadores/delete', error);
-  }
-  async function addPartida(payload){
-    const { data, error } = await client.from('partidas').insert(payload).select().single();
-    if (error) { console.error('partidas/insert', error); return null; }
-    return data;
-  }
-  async function addResultado(partida_id, jugador_id, posicion, puntos, premio){
-    const { error } = await client.from('resultados').insert({ partida_id, jugador_id, posicion, puntos, premio }).select();
-    if (error) console.error('resultados/insert', error);
-  }
-
-  // ---- Realtime (dos vías): postgres_changes + broadcast ----
-  const rt = client.channel('db-changes');
-  rt.on('postgres_changes', { event:'*', schema:'public', table:'jugadores'  }, () => refreshAll('[rt] jugadores'));
-  rt.on('postgres_changes', { event:'*', schema:'public', table:'partidas'   }, () => refreshAll('[rt] partidas'));
-  rt.on('postgres_changes', { event:'*', schema:'public', table:'resultados' }, () => refreshAll('[rt] resultados'));
-  rt.subscribe((status)=> console.log('[realtime]', status));
-
-  const broadcast = client.channel('poker-2025-2026');
-  broadcast.on('broadcast',{ event:'data-changed' }, () => refreshAll('[broadcast]'));
-  broadcast.subscribe((status)=> console.log('[broadcast]', status));
-  async function notifyChange(table){
-    try{ await broadcast.send({ type:'broadcast', event:'data-changed', payload:{ table } }); }catch(e){}
-  }
-
-  // ---- Polling (fallback si la red bloquea sockets) ----
-  let POLL_ID=null;
-  function startPolling(ms=5000){ if(POLL_ID) clearInterval(POLL_ID); POLL_ID = setInterval(()=> refreshAll('[poll]'), ms); }
-
-  // ---- Refresh maestro ----
-  async function refreshAll(tag=''){
-    console.log('refreshAll', tag);
-    await Promise.all([loadJugadores(), loadPartidas(), loadResultados(), loadClasificacion()]);
-    setStatus('online', true);
-  }
-
-  // ---- Bootstrap ----
-  async function initSupabaseBackend(){
-    try{
-      setStatus('conectando…');
-      await refreshAll('[init]');
-      // Si en 10s no vemos eventos realtime, forzamos polling
-      setTimeout(()=> startPolling(8000), 10000);
-    }catch(e){
-      console.error('initSupabaseBackend', e);
-      startPolling(8000);
-      setStatus('online (polling)', true);
-    }
-  }
-  window.initSupabaseBackend = initSupabaseBackend;
-  window.addJugador = async (...a)=>{ await addJugador(...a); await notifyChange('jugadores'); };
-  window.updateJugador = async (...a)=>{ await updateJugador(...a); await notifyChange('jugadores'); };
-  window.deleteJugador = async (...a)=>{ await deleteJugador(...a); await notifyChange('jugadores'); };
-  window.addPartida = async (...a)=>{ const p=await addPartida(...a); await notifyChange('partidas'); return p; };
-  window.addResultado = async (...a)=>{ await addResultado(...a); await notifyChange('resultados'); };
-
-  document.addEventListener('DOMContentLoaded', () => initSupabaseBackend());
-  </script>
-
-  <!-- ===================== FRONTEND (React) ===================== -->
-  <script type="text/babel">
-  const { useEffect, useState } = React;
-
-  function App(){
-    const [players, setPlayers] = useState([]);
-    const [ranking, setRanking] = useState([]);
-    const [games, setGames] = useState([]);
-    const [results, setResults] = useState([]);
-
-    // Exponer setters para los renderers del backend
-    useEffect(()=>{
-      window.__setPlayers = setPlayers;
-      window.__setRanking = setRanking;
-      window.__setGames   = setGames;
-      window.__setResults = setResults;
-    },[]);
-
-    // Form: añadir jugador
-    const [newName, setNewName] = useState("");
-    const [newAvatar, setNewAvatar] = useState("");
-    const canAddPlayer = () => newName.trim() && players.length < 15;
-
-    async function onAddPlayer(){
-      if(!canAddPlayer()) return;
-      await window.addJugador(newName.trim(), newAvatar.trim() || null);
-      setNewName(""); setNewAvatar("");
+    async function __loadClasificacion(){
+      // Si tienes una vista 'clasificacion', úsala
+      const v = await __sb.from('clasificacion').select('*').order('puntos',{ascending:false});
+      if (!v.error && Array.isArray(v.data)) { window.onRanking && window.onRanking(v.data); return; }
+      // Fallback: calcula con resultados si quieres — aquí nos basta con jugadores
+      const js = (await __sb.from('jugadores').select('id,nombre,puntos,balance,paid,avatar')).data || [];
+      const out = js.map(j => ({ id:j.id, nombre:j.nombre, puntos:Number(j.puntos||0), balance:j.balance })).sort((a,b)=>b.puntos-a.puntos);
+      window.onRanking && window.onRanking(out);
     }
 
-    // Form: nueva partida
-    const [fecha, setFecha] = useState("");
-    const [buyIn, setBuyIn] = useState("");
-    const [notas, setNotas] = useState("");
-    async function onAddPartida(){
-      const payload = { fecha: fecha || new Date().toISOString().slice(0,10), buy_in: Number(buyIn||0), notas: notas||null };
-      const p = await window.addPartida(payload);
-      if (p && document.getElementById('selPartida')) {
-        document.getElementById('selPartida').value = p.id;
-      }
-      setFecha(""); setBuyIn(""); setNotas("");
+    // --- Escrituras ---
+    async function __addJugador(nombre, avatar){
+      const { error } = await __sb.from('jugadores').insert({ nombre, avatar }).select();
+      if (error) console.error('jugadores/insert', error);
+    }
+    async function __updateJugador(id, patch){
+      const { error } = await __sb.from('jugadores').update(patch).eq('id', id);
+      if (error) console.error('jugadores/update', error);
+    }
+    async function __deleteJugador(id){
+      const { error } = await __sb.from('jugadores').delete().eq('id', id);
+      if (error) console.error('jugadores/delete', error);
+    }
+    async function __syncPoints(players){
+      try {
+        const ops = players.map(p => __sb.from('jugadores').update({ puntos: Number(p.totalPoints||0) }).eq('id', p.id));
+        await Promise.all(ops);
+      } catch(e){ console.error('jugadores/syncPoints', e); }
     }
 
-    // Form: nuevo resultado
-    const [posicion, setPosicion] = useState("");
-    const [puntos, setPuntos] = useState("");
-    const [premio, setPremio] = useState("");
-    async function onAddResultado(){
-      const partidaId = document.getElementById('selPartida').value;
-      const jugadorId = document.getElementById('selJugador').value;
-      if(!partidaId || !jugadorId) return;
-      await window.addResultado(partidaId, jugadorId, Number(posicion||0), Number(puntos||0), Number(premio||0));
-      setPosicion(""); setPuntos(""); setPremio("");
+    // --- Realtime + broadcast + polling (para refrescar otros dispositivos) ---
+    const __chDB = __sb.channel('db-changes');
+    __chDB.on('postgres_changes', { event:'*', schema:'public', table:'jugadores' }, ()=> __refreshAll('[rt jugadores]'));
+    __chDB.subscribe();
+
+    const __ch = __sb.channel('poker-2025-2026');
+    __ch.on('broadcast', { event:'data-changed' }, ()=> __refreshAll('[broadcast]'));
+    __ch.subscribe();
+    async function __notify(){ try{ await __ch.send({ type:'broadcast', event:'data-changed', payload:{} }); } catch(e){} }
+
+    let __POLL=null;
+    function __startPolling(ms=7000){ if(__POLL) clearInterval(__POLL); __POLL=setInterval(()=>__refreshAll('[poll]'), ms); }
+    setTimeout(()=> __startPolling(12000), 10000); // fallback si sockets no tiran
+
+    async function __refreshAll(tag=''){
+      console.log('refresh', tag);
+      await Promise.all([__loadJugadores(), __loadClasificacion()]);
     }
 
-    // Toggle pago (requiere columna paid boolean en jugadores)
-    async function togglePaid(id){
-      const pj = players.find(p=>p.id===id);
-      if(!pj) return;
-      await window.updateJugador(id, { paid: !pj.paid });
-    }
+    // API pública para tu app React (no cambiamos tu JSX)
+    window.backend = {
+      init({onPlayers,onRanking}){
+        window.onPlayers=onPlayers; window.onRanking=onRanking;
+        __refreshAll('[init]');
+      },
+      addJugador: async (nombre, avatar)=>{ await __addJugador(nombre, avatar); await __notify(); },
+      updateJugador: async (id, patch)=>{ await __updateJugador(id, patch); await __notify(); },
+      deleteJugador: async (id)=>{ await __deleteJugador(id); await __notify(); },
+      syncPoints: async (players)=>{ await __syncPoints(players); await __notify(); }
+    };
+    </script>
 
-    return (
-      <div>
-        {/* Jugadores */}
-        <section>
-          <div className="row">
-            <input placeholder="Nombre del jugador"
-              value={newName} onChange={e=>setNewName(e.target.value)}
-              onKeyDown={e=> e.key==='Enter' && onAddPlayer()} />
-            <input placeholder="URL avatar (opcional)"
-              value={newAvatar} onChange={e=>setNewAvatar(e.target.value)}
-              onKeyDown={e=> e.key==='Enter' && onAddPlayer()} />
-            <button onClick={onAddPlayer} disabled={!canAddPlayer()}>Añadir jugador</button>
-          </div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        // Iconos simples reemplazando lucide-react
+        const Users = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        );
+        
+        const Trophy = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+                <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+                <path d="M4 22h16"/>
+                <path d="M10 14.66V17c0 .55.47.98.97 1.21C12.95 18.8 15.05 18.8 17.03 18.21c.5-.23.97-.66.97-1.21v-2.34"/>
+                <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/>
+            </svg>
+        );
+        
+        const Gamepad2 = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <line x1="6" y1="11" x2="10" y2="11"/>
+                <line x1="8" y1="9" x2="8" y2="13"/>
+                <line x1="15" y1="12" x2="15.01" y2="12"/>
+                <line x1="18" y1="10" x2="18.01" y2="10"/>
+                <rect width="20" height="12" x="2" y="6" rx="2"/>
+            </svg>
+        );
+        
+        const FileText = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/>
+                <path d="M14 2v4a2 2 0 0 0 2 2h4"/>
+                <path d="M10 9H8"/>
+                <path d="M16 13H8"/>
+                <path d="M16 17H8"/>
+            </svg>
+        );
+        
+        const Plus = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M5 12h14"/>
+                <path d="M12 5v14"/>
+            </svg>
+        );
+        
+        const Edit3 = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/>
+            </svg>
+        );
+        
+        const Save = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/>
+                <path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/>
+                <path d="M7 3v4a1 1 0 0 0 1 1h8"/>
+            </svg>
+        );
+        
+        const X = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M18 6 6 18"/>
+                <path d="M6 6l12 12"/>
+            </svg>
+        );
+        
+        const Crown = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <path d="M11.562 3.266a.5.5 0 0 1 .876 0L14.25 8.05l4.114-.438a.5.5 0 0 1 .523.72L16.422 16H7.578L5.113 8.332a.5.5 0 0 1 .523-.72L9.75 8.05z"/>
+                <circle cx="12" cy="6" r="2"/>
+            </svg>
+        );
+        
+        const Medal = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <circle cx="12" cy="8" r="6"/>
+                <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+            </svg>
+        );
+        
+        const Award = ({ size = 24, className = "" }) => (
+            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+                <circle cx="12" cy="8" r="6"/>
+                <path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/>
+            </svg>
+        );
 
-          <div className="card" style={{marginTop:12}}>
-            <table>
-              <thead><tr><th>Jugador</th><th>Puntos</th><th>Balance</th><th>Pago</th></tr></thead>
-              <tbody>
-              {players.map(j => (
-                <tr key={j.id}>
-                  <td className="inline">
-                    <img className="avatar" src={j.photo||''} onError={(e)=> e.currentTarget.style.visibility='hidden'} />
-                    <strong>{j.name}</strong>
-                  </td>
-                  <td>{j.totalPoints||0}</td>
-                  <td>{(new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0})).format(j.balance||0)}</td>
-                  <td>
-                    <button className={j.paid ? "secondary" : ""} onClick={()=>togglePaid(j.id)}>
-                      {j.paid ? 'Pagado' : 'No pagado'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        const PokerDashboard = () => {
+          const [activeTab, setActiveTab] = useState('players');
+          
+          // Fechas oficiales del torneo (todos los viernes)
+          const officialDates = [
+            '2025-09-12', '2025-09-26', '2025-10-24', '2025-11-21', '2025-12-12',
+            '2026-01-30', '2026-02-27', '2026-03-27', '2026-04-25', '2026-05-29'
+          ];
 
-        {/* Clasificación */}
-        <section>
-          <div className="card">
-            <table>
-              <thead><tr><th>#</th><th>Jugador</th><th>Puntos</th><th>Balance</th></tr></thead>
-              <tbody>
-                {ranking.map((r,i)=>(
-                  <tr key={r.id||i}>
-                    <td>{i+1}</td>
-                    <td>{r.nombre}</td>
-                    <td><strong>{r.puntos||0}</strong></td>
-                    <td>{(new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0})).format(r.balance||0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+          // Inicializar partidas oficiales programadas con dos mesas
+          const initialOfficialGames = officialDates.map((date, index) => ({
+            id: `official-${index}`,
+            date: date,
+            isFloating: false,
+            isScheduled: true,
+            host: null,
+            mesa1: {
+              players: [],
+              results: [],
+              photo: null,
+              isCompleted: false
+            },
+            mesa2: {
+              players: [],
+              results: [],
+              photo: null,
+              isCompleted: false
+            }
+          }));
 
-        {/* Partidas / Resultados */}
-        <section>
-          <div className="row">
-            <input type="date" value={fecha} onChange={e=>setFecha(e.target.value)} />
-            <input type="number" step="1" placeholder="Buy-in (€)" value={buyIn} onChange={e=>setBuyIn(e.target.value)} />
-            <input placeholder="Notas (opcional)" value={notas} onChange={e=>setNotas(e.target.value)} />
-            <button onClick={onAddPartida}>Nueva partida</button>
-          </div>
+          // Agregar Gran Final
+          const grandFinal = {
+            id: 'grand-final',
+            date: '2026-06-12',
+            isFloating: false,
+            isScheduled: true,
+            isGrandFinal: true,
+            host: null,
+            mesa1: {
+              players: [],
+              results: [],
+              photo: null,
+              isCompleted: false
+            },
+            mesa2: null // Solo una mesa para la gran final
+          };
+          
+          const [players, setPlayers] = useState([
+            { id: 1, name: 'Jugador 1', totalPoints: 0, gamesPlayed: 0, wins: 0, photo: null, paid: false },
+            { id: 2, name: 'Jugador 2', totalPoints: 0, gamesPlayed: 0, wins: 0, photo: null, paid: false }
+          ]);
+          
+          const [games, setGames] = useState([...initialOfficialGames, grandFinal]);
+          const [floatingGames, setFloatingGames] = useState([]); // Partidas flotantes
+          const [editingPlayer, setEditingPlayer] = useState(null);
+          const [newPlayerName, setNewPlayerName] = useState('');
+          const [showAddFloatingGame, setShowAddFloatingGame] = useState(false);
+          const [editingGameDate, setEditingGameDate] = useState(null);
+          const [expandedGame, setExpandedGame] = useState(null); // Partida expandida
+          const [newFloatingGame, setNewFloatingGame] = useState({
+            date: new Date().toISOString().split('T')[0],
+            mesa1: { players: [], results: [], photo: null },
+            mesa2: { players: [], results: [], photo: null },
+            isFloating: true,
+            host: null
+          });
 
-          <div className="row" style={{marginTop:10}}>
-            <select id="selPartida">
-              {games.map(g=> <option key={g.id} value={g.id}>{g.fecha} · €{g.buy_in}</option>)}
-            </select>
-            <select id="selJugador">
-              {players.map(p=> <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-            <input type="number" min="1" step="1" placeholder="Posición (1=ganador)" value={posicion} onChange={e=>setPosicion(e.target.value)} />
-            <input type="number" step="1" placeholder="Puntos" value={puntos} onChange={e=>setPuntos(e.target.value)} />
-            <input type="number" step="1" placeholder="Premio (€)" value={premio} onChange={e=>setPremio(e.target.value)} />
-            <button onClick={onAddResultado}>Añadir resultado</button>
-          </div>
+          // Calcular clasificación general
+          const rankings = [...players]
+            .sort((a, b) => b.totalPoints - a.totalPoints)
+            .map((player, index) => ({
+              ...player,
+              position: index + 1
+            }));
 
-          <div className="card" style={{marginTop:12}}>
-            <table>
-              <thead><tr><th>Fecha</th><th>Jugador</th><th>Posición</th><th>Puntos</th><th>Premio</th></tr></thead>
-              <tbody>
-                {results.map((r,i)=> (
-                  <tr key={r.id||i}>
-                    <td>{r.fecha || ''}</td>
-                    <td>{r.jugador_nombre || ''}</td>
-                    <td>{r.posicion||''}</td>
-                    <td>{r.puntos||0}</td>
-                    <td>{(new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR',maximumFractionDigits:0})).format(r.premio||0)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </div>
-    );
-  }
+          const addPlayer = () => {
+            if (newPlayerName.trim() && players.length < 15) {
+              const newPlayer = {
+                id: Date.now(),
+                name: newPlayerName.trim(),
+                totalPoints: 0,
+                gamesPlayed: 0,
+                wins: 0,
+                photo: null,
+                paid: false
+              };
+              setPlayers([...players, newPlayer]);
+              setNewPlayerName('');
+            }
+          };
 
-  const container = document.createElement('div');
-  document.querySelector('main').appendChild(container);
-  const root = ReactDOM.createRoot(container);
-  root.render(<App/>);
-  </script>
+          const editPlayer = (player) => {
+            setEditingPlayer({ ...player });
+          };
+
+          const savePlayer = () => {
+            setPlayers(players.map(p => 
+              p.id === editingPlayer.id ? editingPlayer : p
+            ));
+            setEditingPlayer(null);
+          };
+
+          const deletePlayer = (id) => {
+            setPlayers(players.filter(p => p.id !== id));
+          };
+
+          const handlePhotoUpload = (playerId, event) => {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                setPlayers(players.map(p => 
+                  p.id === playerId ? { ...p, photo: e.target.result } : p
+                ));
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+
+          const handleMesaPhotoUpload = (gameId, mesaNumber, event) => {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                if (gameId.startsWith('floating-')) {
+                  setFloatingGames(floatingGames.map(game => {
+                    if (game.id === gameId) {
+                      return {
+                        ...game,
+                        [`mesa${mesaNumber}`]: {
+                          ...game[`mesa${mesaNumber}`],
+                          photo: e.target.result
+                        }
+                      };
+                    }
+                    return game;
+                  }));
+                } else {
+                  setGames(games.map(game => {
+                    if (game.id === gameId) {
+                      return {
+                        ...game,
+                        [`mesa${mesaNumber}`]: {
+                          ...game[`mesa${mesaNumber}`],
+                          photo: e.target.result
+                        }
+                      };
+                    }
+                    return game;
+                  }));
+                }
+              };
+              reader.readAsDataURL(file);
+            }
+          };
+
+          const togglePaymentStatus = (playerId) => {
+            setPlayers(players.map(p => 
+              p.id === playerId ? { ...p, paid: !p.paid } : p
+            ));
+          };
+
+          const updateGameHost = (gameId, hostId) => {
+            if (gameId.startsWith('floating-')) {
+              setFloatingGames(floatingGames.map(game => 
+                game.id === gameId ? { ...game, host: hostId } : game
+              ));
+            } else {
+              setGames(games.map(game => 
+                game.id === gameId ? { ...game, host: hostId } : game
+              ));
+            }
+          };
+
+          const completeMesaWithPodium = (gameId, mesaNumber, first, second, third) => {
+            if (first && second && third && first !== second && second !== third && first !== third) {
+              const results = [
+                { playerId: first, position: 1, points: 6 },
+                { playerId: second, position: 2, points: 3 },
+                { playerId: third, position: 3, points: 1 }
+              ];
+
+              const updatedMesa = {
+                players: [first, second, third],
+                results,
+                isCompleted: true,
+                photo: gameId.startsWith('floating-') 
+                  ? floatingGames.find(g => g.id === gameId)?.[`mesa${mesaNumber}`]?.photo || null
+                  : games.find(g => g.id === gameId)?.[`mesa${mesaNumber}`]?.photo || null
+              };
+
+              // Actualizar la partida correspondiente
+              if (gameId.startsWith('floating-')) {
+                setFloatingGames(floatingGames.map(game => {
+                  if (game.id === gameId) {
+                    return {
+                      ...game,
+                      [`mesa${mesaNumber}`]: updatedMesa
+                    };
+                  }
+                  return game;
+                }));
+              } else {
+                setGames(games.map(game => {
+                  if (game.id === gameId) {
+                    return {
+                      ...game,
+                      [`mesa${mesaNumber}`]: updatedMesa,
+                      isScheduled: false
+                    };
+                  }
+                  return game;
+                }));
+              }
+
+              // Actualizar estadísticas de jugadores
+              const updatedPlayers = players.map(player => {
+                const result = results.find(r => r.playerId === player.id);
+                if (result) {
+                  return {
+                    ...player,
+                    totalPoints: player.totalPoints + result.points,
+                    gamesPlayed: player.gamesPlayed + 1,
+                    wins: result.position === 1 ? player.wins + 1 : player.wins
+                  };
+                }
+                return player;
+              });
+              
+              setPlayers(updatedPlayers);
+            }
+          };
+
+          const deleteFloatingGame = (gameId) => {
+            const gameToDelete = floatingGames.find(g => g.id === gameId);
+            if (gameToDelete) {
+              // Restar puntos de las mesas completadas
+              let totalPointsToSubtract = 0;
+              let totalGamesToSubtract = 0;
+              let totalWinsToSubtract = 0;
+
+              const updatedPlayers = players.map(player => {
+                let pointsToSubtract = 0;
+                let gamesToSubtract = 0;
+                let winsToSubtract = 0;
+
+                // Mesa 1
+                if (gameToDelete.mesa1?.results) {
+                  const result1 = gameToDelete.mesa1.results.find(r => r.playerId === player.id);
+                  if (result1) {
+                    pointsToSubtract += result1.points;
+                    gamesToSubtract += 1;
+                    if (result1.position === 1) winsToSubtract += 1;
+                  }
+                }
+
+                // Mesa 2
+                if (gameToDelete.mesa2?.results) {
+                  const result2 = gameToDelete.mesa2.results.find(r => r.playerId === player.id);
+                  if (result2) {
+                    pointsToSubtract += result2.points;
+                    gamesToSubtract += 1;
+                    if (result2.position === 1) winsToSubtract += 1;
+                  }
+                }
+
+                return {
+                  ...player,
+                  totalPoints: Math.max(0, player.totalPoints - pointsToSubtract),
+                  gamesPlayed: Math.max(0, player.gamesPlayed - gamesToSubtract),
+                  wins: Math.max(0, player.wins - winsToSubtract)
+                };
+              });
+              
+              setPlayers(updatedPlayers);
+              setFloatingGames(floatingGames.filter(g => g.id !== gameId));
+            }
+          };
+
+          const updateGameDate = (gameId, newDate) => {
+            setFloatingGames(floatingGames.map(game => 
+              game.id === gameId ? { ...game, date: newDate } : game
+            ));
+            setEditingGameDate(null);
+          };
+
+          // Combinar y ordenar todas las partidas (oficiales + flotantes)
+          const allGames = [...games, ...floatingGames].sort((a, b) => new Date(a.date + 'T12:00:00') - new Date(b.date + 'T12:00:00'));
+
+          const getRankIcon = (position) => {
+            switch(position) {
+              case 1: return <Crown className="text-yellow-400" size={20} />;
+              case 2: return <Medal className="text-gray-400" size={20} />;
+              case 3: return <Award className="text-amber-600" size={20} />;
+              default: return null;
+            }
+          };
+
+          const tabConfig = [
+            { id: 'players', name: 'Jugadores', icon: Users },
+            { id: 'rankings', name: 'Clasificación', icon: Trophy },
+            { id: 'games', name: 'Partidas', icon: Gamepad2 },
+            { id: 'rules', name: 'Reglas', icon: FileText }
+          ];
+
+          return (
+            <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-emerald-900">
+              {/* Header */}
+              <div className="bg-black/30 backdrop-blur-sm border-b border-yellow-500/20">
+                <div className="max-w-md mx-auto px-4 py-4">
+                  <h1 className="text-2xl font-bold text-center text-yellow-400 mb-2">
+                    🃏 POKER 2025/2026
+                  </h1>
+                  <div className="flex justify-center">
+                    <div className="bg-red-600/20 px-3 py-1 rounded-full border border-red-500/30">
+                      <span className="text-red-300 text-sm font-medium">Campeonato Oficial</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Navigation Tabs */}
+              <div className="bg-black/20 backdrop-blur-sm">
+                <div className="max-w-md mx-auto px-2">
+                  <div className="flex justify-between">
+                    {tabConfig.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={`flex-1 flex flex-col items-center py-3 px-2 transition-all duration-200 ${
+                            isActive 
+                              ? 'bg-yellow-500/20 border-t-2 border-yellow-400 text-yellow-300' 
+                              : 'text-gray-300 hover:text-yellow-300 hover:bg-white/5'
+                          }`}
+                        >
+                          <Icon size={18} className="mb-1" />
+                          <span className="text-xs font-medium">{tab.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="max-w-md mx-auto px-4 py-6">
+                
+                {/* Jugadores Tab */}
+                {activeTab === 'players' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-xl font-bold text-white">Jugadores ({players.length}/15)</h2>
+                      {players.length < 15 && (
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newPlayerName}
+                            onChange={(e) => setNewPlayerName(e.target.value)}
+                            placeholder="Nombre y apellidos"
+                            className="px-3 py-2 bg-black/30 border border-yellow-500/30 rounded text-white placeholder-gray-400 text-sm"
+                            onKeyPress={(e) => e.key === 'Enter' && addPlayer()}
+                          />
+                          <button
+                            onClick={addPlayer}
+                            className="bg-yellow-500 hover:bg-yellow-600 text-black p-2 rounded transition-colors"
+                          >
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="space-y-3">
+                      {players.map((player) => (
+                        <div key={player.id} className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4">
+                          {editingPlayer && editingPlayer.id === player.id ? (
+                            <div className="space-y-4">
+                              {/* Foto en modo edición */}
+                              <div className="flex justify-center">
+                                <div className="relative">
+                                  <div className="w-20 h-20 rounded-full overflow-hidden bg-gray-600 flex items-center justify-center cursor-pointer hover:bg-gray-500 transition-colors">
+                                    {editingPlayer.photo ? (
+                                      <img 
+                                        src={editingPlayer.photo} 
+                                        alt="Player" 
+                                        className="w-full h-full object-cover"
+                                      />
+                                    ) : (
+                                      <Users size={24} className="text-gray-400" />
+                                    )}
+                                  </div>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => {
+                                      const file = e.target.files[0];
+                                      if (file && file.type.startsWith('image/')) {
+                                        const reader = new FileReader();
+                                        reader.onload = (event) => {
+                                          setEditingPlayer({...editingPlayer, photo: event.target.result});
+                                        };
+                                        reader.readAsDataURL(file);
+                                      }
+                                    }}
+                                    className="absolute inset-0 opacity-0 cursor-pointer"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Nombre en modo edición */}
+                              <input
+                                type="text"
+                                value={editingPlayer.name}
+                                onChange={(e) => setEditingPlayer({...editingPlayer, name: e.target.value})}
+                                placeholder="Nombre y apellidos"
+                                className="w-full px-3 py-2 bg-black/50 border border-yellow-500/30 rounded text-white text-center"
+                              />
+                              
+                              {/* Estado de pago en modo edición */}
+                              <div className="flex justify-center">
+                                <button
+                                  onClick={() => setEditingPlayer({...editingPlayer, paid: !editingPlayer.paid})}
+                                  className={`px-4 py-2 rounded font-medium text-white transition-colors ${
+                                    editingPlayer.paid 
+                                      ? 'bg-green-600 hover:bg-green-700' 
+                                      : 'bg-red-600 hover:bg-red-700'
+                                  }`}
+                                >
+                                  {editingPlayer.paid ? 'Pagado' : 'No pagado'}
+                                </button>
+                              </div>
+                              
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={savePlayer}
+                                  className="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                                >
+                                  <Save size={14} /> Guardar
+                                </button>
+                                <button
+                                  onClick={() => setEditingPlayer(null)}
+                                  className="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+                                >
+                                  <X size={14} /> Cancelar
+                                </button>
+                                <button
+                                  onClick={() => deletePlayer(player.id)}
+                                  className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                                >
+                                  Eliminar
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-4">
+                              {/* Foto del jugador */}
+                              <div className="relative">
+                                <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-600 flex items-center justify-center cursor-pointer hover:bg-gray-500 transition-colors">
+                                  {player.photo ? (
+                                    <img 
+                                      src={player.photo} 
+                                      alt={player.name} 
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <Users size={20} className="text-gray-400" />
+                                  )}
+                                </div>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => handlePhotoUpload(player.id, e)}
+                                  className="absolute inset-0 opacity-0 cursor-pointer"
+                                />
+                              </div>
+                              
+                              {/* Información del jugador */}
+                              <div className="flex-1">
+                                <div className="flex justify-between items-start mb-2">
+                                  <div>
+                                    <h3 className="font-semibold text-white text-lg">{player.name}</h3>
+                                    <button
+                                      onClick={() => togglePaymentStatus(player.id)}
+                                      className={`px-3 py-1 rounded text-sm font-medium text-white transition-colors cursor-pointer ${
+                                        player.paid 
+                                          ? 'bg-green-600 hover:bg-green-700' 
+                                          : 'bg-red-600 hover:bg-red-700'
+                                      }`}
+                                    >
+                                      {player.paid ? 'Pagado' : 'No pagado'}
+                                    </button>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-right">
+                                      <div className="text-yellow-400 font-bold text-xl">{player.totalPoints}</div>
+                                      <div className="text-xs text-gray-400">puntos</div>
+                                    </div>
+                                    <button
+                                      onClick={() => editPlayer(player)}
+                                      className="text-yellow-400 hover:text-yellow-300 p-1"
+                                    >
+                                      <Edit3 size={16} />
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="flex gap-4 text-sm text-gray-300">
+                                  <span>{player.gamesPlayed} partidas</span>
+                                  <span>{player.wins} victorias</span>
+                                  <span>{player.gamesPlayed > 0 ? Math.round((player.wins / player.gamesPlayed) * 100) : 0}% WR</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Clasificación Tab */}
+                {activeTab === 'rankings' && (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-white mb-4">Clasificación General</h2>
+                    <div className="space-y-3">
+                      {rankings.map((player) => (
+                        <div key={player.id} className={`bg-black/30 backdrop-blur-sm border rounded-lg p-4 ${
+                          player.position === 1 ? 'border-yellow-400/50 bg-yellow-500/10' :
+                          player.position === 2 ? 'border-gray-400/50 bg-gray-500/10' :
+                          player.position === 3 ? 'border-amber-600/50 bg-amber-600/10' :
+                          'border-yellow-500/20'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <span className={`text-lg font-bold ${
+                                  player.position <= 3 ? 'text-yellow-400' : 'text-white'
+                                }`}>
+                                  #{player.position}
+                                </span>
+                                {getRankIcon(player.position)}
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-white">{player.name}</h3>
+                                <div className="flex gap-4 text-sm text-gray-300">
+                                  <span>{player.gamesPlayed} partidas</span>
+                                  <span>{player.wins} victorias</span>
+                                  <span>{player.gamesPlayed > 0 ? Math.round((player.wins / player.gamesPlayed) * 100) : 0}% WR</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-xl font-bold text-yellow-400">{player.totalPoints}</div>
+                              <div className="text-xs text-gray-400">puntos</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Partidas Tab */}
+                {activeTab === 'games' && (
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-xl font-bold text-white">
+                        Partidas ({allGames.filter(g => (g.mesa1?.isCompleted || g.mesa2?.isCompleted)).length} fechas con mesas / {allGames.length} total)
+                      </h2>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setShowAddFloatingGame(true)}
+                          disabled={floatingGames.length >= 6}
+                          className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-3 py-2 rounded font-medium text-sm flex items-center gap-1"
+                        >
+                          <Plus size={14} /> Flotante ({floatingGames.length}/6)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Formulario para partida flotante */}
+                    {showAddFloatingGame && (
+                      <div className="bg-black/40 backdrop-blur-sm border border-blue-500/30 rounded-lg p-4 space-y-4">
+                        <h3 className="text-lg font-semibold text-white">Registrar Partida Flotante</h3>
+                        <input
+                          type="date"
+                          value={newFloatingGame.date}
+                          onChange={(e) => setNewFloatingGame({...newFloatingGame, date: e.target.value})}
+                          className="w-full px-3 py-2 bg-black/50 border border-blue-500/30 rounded text-white"
+                        />
+                        
+                        <div>
+                          <label className="block text-white text-sm mb-2">Anfitrión:</label>
+                          <select
+                            value={newFloatingGame.host || ''}
+                            onChange={(e) => setNewFloatingGame({...newFloatingGame, host: e.target.value || null})}
+                            className="w-full px-3 py-2 bg-black/50 border border-blue-500/30 rounded text-white"
+                          >
+                            <option value="">Seleccionar anfitrión</option>
+                            {players.map(player => (
+                              <option key={player.id} value={player.id}>{player.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => {
+                              const newId = `floating-${Date.now()}`;
+                              const newFloating = {
+                                ...newFloatingGame,
+                                id: newId
+                              };
+                              setFloatingGames([...floatingGames, newFloating]);
+                              setShowAddFloatingGame(false);
+                              setNewFloatingGame({
+                                date: new Date().toISOString().split('T')[0],
+                                mesa1: { players: [], results: [], photo: null },
+                                mesa2: { players: [], results: [], photo: null },
+                                isFloating: true,
+                                host: null
+                              });
+                            }}
+                            disabled={!newFloatingGame.date || !newFloatingGame.host}
+                            className="bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded font-medium"
+                          >
+                            Crear Partida Flotante
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowAddFloatingGame(false);
+                              setNewFloatingGame({
+                                date: new Date().toISOString().split('T')[0],
+                                mesa1: { players: [], results: [], photo: null },
+                                mesa2: { players: [], results: [], photo: null },
+                                isFloating: true,
+                                host: null
+                              });
+                            }}
+                            className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded font-medium"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      {allGames.map((game) => {
+                        const hostPlayer = game.host ? players.find(p => p.id === game.host) : null;
+                        const isScheduled = game.isScheduled;
+                        const isGrandFinal = game.isGrandFinal;
+                        const gameDate = new Date(game.date + 'T12:00:00'); // Añadir hora para evitar problemas de zona horaria
+                        const today = new Date();
+                        const isPastDue = gameDate < today && isScheduled;
+                        const isFirstGameCompleted = game.date === '2025-09-12'; // Primera partida ya jugada
+                        const isExpanded = expandedGame === game.id;
+                        const mesa1Completed = game.mesa1?.isCompleted;
+                        const mesa2Completed = game.mesa2?.isCompleted;
+                        const bothCompleted = mesa1Completed && (isGrandFinal || mesa2Completed);
+                        
+                        return (
+                          <div key={game.id} className={`backdrop-blur-sm border rounded-lg p-4 ${
+                            isGrandFinal 
+                              ? 'bg-purple-500/20 border-purple-400/50 shadow-lg' 
+                              : game.isFloating 
+                                ? 'bg-blue-500/10 border-blue-500/30' 
+                                : isScheduled
+                                  ? isPastDue 
+                                    ? 'bg-orange-500/10 border-orange-500/30'
+                                    : 'bg-green-500/10 border-green-500/30'
+                                  : 'bg-black/30 border-yellow-500/20'
+                          }`}>
+                            
+                            {/* Header de la partida */}
+                            <div className="flex justify-between items-center mb-3">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2">
+                                  <h3 className={`font-semibold ${isGrandFinal ? 'text-purple-300 text-lg' : 'text-white'}`}>
+                                    {gameDate.toLocaleDateString('es-ES', { 
+                                      weekday: 'long', 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })}
+                                    {isGrandFinal && <span className="text-purple-400 ml-2 text-sm">• GRAN FINAL 🏆</span>}
+                                    {game.isFloating && <span className="text-blue-400 ml-2 text-sm">• FLOTANTE</span>}
+                                    {isScheduled && !isGrandFinal && (
+                                      <span className={`ml-2 text-sm ${
+                                        isFirstGameCompleted ? 'text-green-400' :
+                                        isPastDue ? 'text-orange-400' : 'text-green-400'
+                                      }`}>
+                                        • {isFirstGameCompleted ? 'COMPLETADA' : 
+                                           isPastDue ? 'YA JUGADO' : 'PROGRAMADA'}
+                                      </span>
+                                    )}
+                                  </h3>
+                                </div>
+                                {hostPlayer ? (
+                                  <p className="text-sm text-gray-400">🎩 Anfitrión: {hostPlayer.name} {hostPlayer.paid ? '✅' : '❌'}</p>
+                                ) : (
+                                  <p className="text-sm text-gray-500 italic">🎩 Sin anfitrión asignado</p>
+                                )}
+                                {isScheduled && (
+                                  <p className="text-sm text-gray-500 italic">
+                                    {isGrandFinal ? 'Mesa final con los 6 mejores jugadores' : 'Fecha oficial del torneo - Dos mesas'}
+                                  </p>
+                                )}
+                              </div>
+                              
+                              <div className="flex items-center gap-2">
+                                {bothCompleted && (
+                                  <span className="text-green-400 text-sm">✓ Completado</span>
+                                )}
+                                
+                                <button
+                                  onClick={() => setExpandedGame(isExpanded ? null : game.id)}
+                                  className="text-yellow-400 hover:text-yellow-300 p-1"
+                                >
+                                  {isExpanded ? '▼' : '▶'}
+                                </button>
+                                
+                                {game.isFloating && (
+                                  <button
+                                    onClick={() => deleteFloatingGame(game.id)}
+                                    className="text-red-400 hover:text-red-300 p-1"
+                                    title="Borrar partida flotante"
+                                  >
+                                    <X size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Resumen de finalistas - siempre visible */}
+                            {(mesa1Completed || mesa2Completed) && (
+                              <div className="mb-3 space-y-2">
+                                {/* Mesa 1 Finalistas */}
+                                {mesa1Completed && (
+                                  <div className="bg-black/20 rounded p-2">
+                                    <h4 className="text-sm font-semibold text-yellow-400 mb-1">
+                                      {isGrandFinal ? '🏆 GRAN FINAL' : '🎯 MESA 1'} - Finalistas:
+                                    </h4>
+                                    <div className="flex gap-4 text-sm">
+                                      {game.mesa1.results.slice(0, 3).map((result, index) => {
+                                        const player = players.find(p => p.id === result.playerId);
+                                        const medals = ['🥇', '🥈', '🥉'];
+                                        return (
+                                          <span key={result.playerId} className={`${
+                                            index === 0 ? 'text-yellow-400 font-bold' : 
+                                            index === 1 ? 'text-gray-300 font-semibold' : 
+                                            'text-amber-600 font-medium'
+                                          }`}>
+                                            {medals[index]} {player?.name}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Mesa 2 Finalistas */}
+                                {mesa2Completed && !isGrandFinal && (
+                                  <div className="bg-black/20 rounded p-2">
+                                    <h4 className="text-sm font-semibold text-yellow-400 mb-1">🎯 MESA 2 - Finalistas:</h4>
+                                    <div className="flex gap-4 text-sm">
+                                      {game.mesa2.results.slice(0, 3).map((result, index) => {
+                                        const player = players.find(p => p.id === result.playerId);
+                                        const medals = ['🥇', '🥈', '🥉'];
+                                        return (
+                                          <span key={result.playerId} className={`${
+                                            index === 0 ? 'text-yellow-400 font-bold' : 
+                                            index === 1 ? 'text-gray-300 font-semibold' : 
+                                            'text-amber-600 font-medium'
+                                          }`}>
+                                            {medals[index]} {player?.name}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Detalles expandidos */}
+                            {isExpanded && (
+                              <div className="border-t border-gray-500/20 pt-4 space-y-4">
+                                
+                                {/* Selección de Anfitrión */}
+                                <div className="bg-black/20 rounded-lg p-3">
+                                  <label className="block text-white text-sm font-semibold mb-2">🎩 Seleccionar Anfitrión:</label>
+                                  <select
+                                    value={game.host || ''}
+                                    onChange={(e) => updateGameHost(game.id, e.target.value || null)}
+                                    className="w-full px-3 py-2 bg-black/50 border border-yellow-500/30 rounded text-white text-sm"
+                                  >
+                                    <option value="">-- Sin anfitrión asignado --</option>
+                                    {players.map(player => (
+                                      <option key={player.id} value={player.id}>
+                                        {player.name} {player.paid ? '✅' : '❌'}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  {game.host && (
+                                    <p className="text-xs text-gray-400 mt-1">
+                                      Anfitrión: {players.find(p => p.id === game.host)?.name} será el host para ambas mesas
+                                    </p>
+                                  )}
+                                </div>
+                                
+                                {/* Mesa 1 */}
+                                <div className="bg-black/20 rounded-lg p-4">
+                                  <div className="flex justify-between items-center mb-3">
+                                    <h4 className="font-semibold text-white">
+                                      {isGrandFinal ? '🏆 GRAN FINAL' : '🎯 MESA 1'}
+                                    </h4>
+                                    <div className="flex gap-2">
+                                      {/* Botón subir foto */}
+                                      <label className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm cursor-pointer flex items-center gap-1">
+                                        📷 Foto Mesa
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          onChange={(e) => handleMesaPhotoUpload(game.id, 1, e)}
+                                          className="hidden"
+                                        />
+                                      </label>
+                                    </div>
+                                  </div>
+
+                                  {/* Foto de la mesa */}
+                                  {game.mesa1.photo && (
+                                    <div className="mb-3">
+                                      <img 
+                                        src={game.mesa1.photo} 
+                                        alt="Foto Mesa 1" 
+                                        className="w-full max-w-sm mx-auto rounded border border-yellow-500/30"
+                                        style={{ objectFit: 'contain' }}
+                                      />
+                                    </div>
+                                  )}
+
+                                  {/* Resultados o Selección de Podium */}
+                                  {mesa1Completed ? (
+                                    <div className="space-y-2">
+                                      {game.mesa1.results.map((result) => {
+                                        const player = players.find(p => p.id === result.playerId);
+                                        return (
+                                          <div key={result.playerId} className="flex justify-between items-center">
+                                            <div className="flex items-center gap-2">
+                                              <span className="text-yellow-400 font-bold w-6">
+                                                {result.position}º
+                                              </span>
+                                              {getRankIcon(result.position)}
+                                              <span className="text-white">{player?.name}</span>
+                                            </div>
+                                            <span className="text-yellow-400 font-bold">+{result.points}</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-3">
+                                      <h5 className="text-white text-sm font-semibold">Seleccionar podium:</h5>
+                                      
+                                      {/* 1er Lugar */}
+                                      <div>
+                                        <label className="block text-yellow-400 text-sm mb-1">🥇 1er Lugar (6 puntos):</label>
+                                        <select
+                                          onChange={(e) => {
+                                            const [second, third] = [
+                                              document.querySelector(`select[data-mesa="${game.id}-1-second"]`)?.value,
+                                              document.querySelector(`select[data-mesa="${game.id}-1-third"]`)?.value
+                                            ];
+                                            if (e.target.value && second && third) {
+                                              completeMesaWithPodium(game.id, 1, e.target.value, second, third);
+                                            }
+                                          }}
+                                          data-mesa={`${game.id}-1-first`}
+                                          className="w-full px-2 py-1 bg-black/50 border border-yellow-500/30 rounded text-white text-sm"
+                                        >
+                                          <option value="">Seleccionar jugador</option>
+                                          {players.map(player => (
+                                            <option key={player.id} value={player.id}>{player.name}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      
+                                      {/* 2do Lugar */}
+                                      <div>
+                                        <label className="block text-gray-300 text-sm mb-1">🥈 2do Lugar (3 puntos):</label>
+                                        <select
+                                          onChange={(e) => {
+                                            const [first, third] = [
+                                              document.querySelector(`select[data-mesa="${game.id}-1-first"]`)?.value,
+                                              document.querySelector(`select[data-mesa="${game.id}-1-third"]`)?.value
+                                            ];
+                                            if (first && e.target.value && third) {
+                                              completeMesaWithPodium(game.id, 1, first, e.target.value, third);
+                                            }
+                                          }}
+                                          data-mesa={`${game.id}-1-second`}
+                                          className="w-full px-2 py-1 bg-black/50 border border-gray-400/30 rounded text-white text-sm"
+                                        >
+                                          <option value="">Seleccionar jugador</option>
+                                          {players.map(player => (
+                                            <option key={player.id} value={player.id}>{player.name}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      
+                                      {/* 3er Lugar */}
+                                      <div>
+                                        <label className="block text-amber-600 text-sm mb-1">🥉 3er Lugar (1 punto):</label>
+                                        <select
+                                          onChange={(e) => {
+                                            const [first, second] = [
+                                              document.querySelector(`select[data-mesa="${game.id}-1-first"]`)?.value,
+                                              document.querySelector(`select[data-mesa="${game.id}-1-second"]`)?.value
+                                            ];
+                                            if (first && second && e.target.value) {
+                                              completeMesaWithPodium(game.id, 1, first, second, e.target.value);
+                                            }
+                                          }}
+                                          data-mesa={`${game.id}-1-third`}
+                                          className="w-full px-2 py-1 bg-black/50 border border-amber-600/30 rounded text-white text-sm"
+                                        >
+                                          <option value="">Seleccionar jugador</option>
+                                          {players.map(player => (
+                                            <option key={player.id} value={player.id}>{player.name}</option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                      
+                                      <p className="text-xs text-gray-500 italic">
+                                        * Al seleccionar los 3 lugares, la mesa se completará automáticamente
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Mesa 2 (solo si no es gran final) */}
+                                {!isGrandFinal && (
+                                  <div className="bg-black/20 rounded-lg p-4">
+                                    <div className="flex justify-between items-center mb-3">
+                                      <h4 className="font-semibold text-white">🎯 MESA 2</h4>
+                                      <div className="flex gap-2">
+                                        {/* Botón subir foto */}
+                                        <label className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded text-sm cursor-pointer flex items-center gap-1">
+                                          📷 Foto Mesa
+                                          <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={(e) => handleMesaPhotoUpload(game.id, 2, e)}
+                                            className="hidden"
+                                          />
+                                        </label>
+                                      </div>
+                                    </div>
+
+                                    {/* Foto de la mesa */}
+                                    {game.mesa2.photo && (
+                                      <div className="mb-3">
+                                        <img 
+                                          src={game.mesa2.photo} 
+                                          alt="Foto Mesa 2" 
+                                          className="w-full max-w-sm mx-auto rounded border border-yellow-500/30"
+                                          style={{ objectFit: 'contain' }}
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Resultados o Selección de Podium */}
+                                    {mesa2Completed ? (
+                                      <div className="space-y-2">
+                                        {game.mesa2.results.map((result) => {
+                                          const player = players.find(p => p.id === result.playerId);
+                                          return (
+                                            <div key={result.playerId} className="flex justify-between items-center">
+                                              <div className="flex items-center gap-2">
+                                                <span className="text-yellow-400 font-bold w-6">
+                                                  {result.position}º
+                                                </span>
+                                                {getRankIcon(result.position)}
+                                                <span className="text-white">{player?.name}</span>
+                                              </div>
+                                              <span className="text-yellow-400 font-bold">+{result.points}</span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    ) : (
+                                      <div className="space-y-3">
+                                        <h5 className="text-white text-sm font-semibold">Seleccionar podium:</h5>
+                                        
+                                        {/* 1er Lugar */}
+                                        <div>
+                                          <label className="block text-yellow-400 text-sm mb-1">🥇 1er Lugar (6 puntos):</label>
+                                          <select
+                                            onChange={(e) => {
+                                              const [second, third] = [
+                                                document.querySelector(`select[data-mesa="${game.id}-2-second"]`)?.value,
+                                                document.querySelector(`select[data-mesa="${game.id}-2-third"]`)?.value
+                                              ];
+                                              if (e.target.value && second && third) {
+                                                completeMesaWithPodium(game.id, 2, e.target.value, second, third);
+                                              }
+                                            }}
+                                            data-mesa={`${game.id}-2-first`}
+                                            className="w-full px-2 py-1 bg-black/50 border border-yellow-500/30 rounded text-white text-sm"
+                                          >
+                                            <option value="">Seleccionar jugador</option>
+                                            {players.map(player => (
+                                              <option key={player.id} value={player.id}>{player.name}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        
+                                        {/* 2do Lugar */}
+                                        <div>
+                                          <label className="block text-gray-300 text-sm mb-1">🥈 2do Lugar (3 puntos):</label>
+                                          <select
+                                            onChange={(e) => {
+                                              const [first, third] = [
+                                                document.querySelector(`select[data-mesa="${game.id}-2-first"]`)?.value,
+                                                document.querySelector(`select[data-mesa="${game.id}-2-third"]`)?.value
+                                              ];
+                                              if (first && e.target.value && third) {
+                                                completeMesaWithPodium(game.id, 2, first, e.target.value, third);
+                                              }
+                                            }}
+                                            data-mesa={`${game.id}-2-second`}
+                                            className="w-full px-2 py-1 bg-black/50 border border-gray-400/30 rounded text-white text-sm"
+                                          >
+                                            <option value="">Seleccionar jugador</option>
+                                            {players.map(player => (
+                                              <option key={player.id} value={player.id}>{player.name}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        
+                                        {/* 3er Lugar */}
+                                        <div>
+                                          <label className="block text-amber-600 text-sm mb-1">🥉 3er Lugar (1 punto):</label>
+                                          <select
+                                            onChange={(e) => {
+                                              const [first, second] = [
+                                                document.querySelector(`select[data-mesa="${game.id}-2-first"]`)?.value,
+                                                document.querySelector(`select[data-mesa="${game.id}-2-second"]`)?.value
+                                              ];
+                                              if (first && second && e.target.value) {
+                                                completeMesaWithPodium(game.id, 2, first, second, e.target.value);
+                                              }
+                                            }}
+                                            data-mesa={`${game.id}-2-third`}
+                                            className="w-full px-2 py-1 bg-black/50 border border-amber-600/30 rounded text-white text-sm"
+                                          >
+                                            <option value="">Seleccionar jugador</option>
+                                            {players.map(player => (
+                                              <option key={player.id} value={player.id}>{player.name}</option>
+                                            ))}
+                                          </select>
+                                        </div>
+                                        
+                                        <p className="text-xs text-gray-500 italic">
+                                          * Al seleccionar los 3 lugares, la mesa se completará automáticamente
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Reglas Tab */}
+                {activeTab === 'rules' && (
+                  <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-white mb-4">Reglas del Torneo</h2>
+                    
+                    {/* Entrada */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">💰 Entrada</h3>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        <li>• Costo: <strong className="text-yellow-400">$50 USD</strong></li>
+                        <li>• 💳 Pago a: <strong className="text-yellow-400">Eliuth Triana</strong></li>
+                        <li>• 🧾 Los participantes no acumularán puntos para la clasificación general hasta confirmar participación y pago</li>
+                      </ul>
+                    </div>
+
+                    {/* Participantes externos */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">🃏 Participantes externos</h3>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        <li>• 👥 Pueden jugar en las mesas (a discreción del anfitrión)</li>
+                        <li>• 🏆 Acceden al premio de la mesa</li>
+                        <li>• 🚫 No acumulan puntos para el torneo</li>
+                      </ul>
+                    </div>
+
+                    {/* Fechas */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">📅 Fechas oficiales</h3>
+                      <div className="grid grid-cols-2 gap-2 text-gray-300 text-sm">
+                        <div>🗓 12 Septiembre 2025</div>
+                        <div>🗓 26 Septiembre 2025</div>
+                        <div>🗓 24 Octubre 2025</div>
+                        <div>🗓 21 Noviembre 2025</div>
+                        <div>🗓 12 Diciembre 2025</div>
+                        <div>🗓 30 Enero 2026</div>
+                        <div>🗓 27 Febrero 2026</div>
+                        <div>🗓 27 Marzo 2026</div>
+                        <div>🗓 25 Abril 2026</div>
+                        <div>🗓 29 Mayo 2026</div>
+                      </div>
+                      <div className="border-t border-yellow-500/20 pt-3">
+                        <h4 className="text-yellow-400 font-semibold">➕ Fechas adicionales</h4>
+                        <ul className="text-gray-300 text-sm space-y-1">
+                          <li>• 🔄 Máximo 2 por mes</li>
+                          <li>• 👥 Requiere mínimo 6 jugadores del torneo</li>
+                        </ul>
+                      </div>
+                      <div className="border-t border-yellow-500/20 pt-3">
+                        <h4 className="text-yellow-400 font-semibold">🎉 Gran Final</h4>
+                        <p className="text-gray-300 text-sm">📍 Fecha: <strong className="text-yellow-400">12 de Junio 2026</strong></p>
+                      </div>
+                    </div>
+
+                    {/* Sistema de puntuación */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">🏆 Sistema de puntuación</h3>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        <li>• 🥇 1er lugar: <strong className="text-yellow-400">6 puntos</strong></li>
+                        <li>• 🥈 2do lugar: <strong className="text-yellow-400">3 puntos</strong></li>
+                        <li>• 🥉 3er lugar: <strong className="text-yellow-400">1 punto</strong></li>
+                        <li>• 📊 Se consideran las 12 mejores mesas</li>
+                        <li>• ➕ Si no se llega a 12, se suman los puntos acumulados</li>
+                      </ul>
+                    </div>
+
+                    {/* Finalistas */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">🎖 Finalistas</h3>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        <li>• 👑 Los 6 mejores jugadores acceden a la mesa final</li>
+                        <li>• 🔄 Si alguien no puede asistir, entra el siguiente en la tabla</li>
+                      </ul>
+                    </div>
+
+                    {/* Desempates */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">⚖️ Desempates</h3>
+                      <ol className="text-gray-300 text-sm space-y-1 list-inside">
+                        <li>1️⃣ Veces en 1er lugar</li>
+                        <li>2️⃣ Veces en 2do lugar</li>
+                        <li>3️⃣ Veces en 3er lugar</li>
+                        <li>🎩 Veces como anfitrión</li>
+                      </ol>
+                    </div>
+
+                    {/* Premios */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">💵 Premios</h3>
+                      <div className="space-y-2">
+                        <p className="text-gray-300 text-sm">• 🏆 Ganador de la temporada: <strong className="text-yellow-400">$xx.xx</strong></p>
+                        <div>
+                          <p className="text-gray-300 text-sm">• 🃏 Mesa de finalistas:</p>
+                          <ul className="ml-4 text-gray-300 text-sm space-y-1">
+                            <li>🥇 1er lugar: <strong className="text-yellow-400">$xx.xx</strong></li>
+                            <li>🥈 2do lugar: <strong className="text-yellow-400">$xx.xx</strong></li>
+                            <li>🥉 3er lugar: <strong className="text-yellow-400">$50</strong></li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Estructura de Blinds */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">⏱ Estructura de Blinds</h3>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-yellow-500/20">
+                              <th className="text-yellow-400 text-left py-2">🧮 Nivel</th>
+                              <th className="text-yellow-400 text-left py-2">💵 Small Blind</th>
+                              <th className="text-yellow-400 text-left py-2">💵 Big Blind</th>
+                              <th className="text-yellow-400 text-left py-2">⏳ Duración</th>
+                            </tr>
+                          </thead>
+                          <tbody className="text-gray-300">
+                            <tr><td>1</td><td>50</td><td>100</td><td>15 min</td></tr>
+                            <tr><td>2</td><td>100</td><td>200</td><td>10 min</td></tr>
+                            <tr><td>3</td><td>200</td><td>400</td><td>10 min</td></tr>
+                            <tr><td>4</td><td>300</td><td>600</td><td>10 min</td></tr>
+                            <tr><td>5</td><td>500</td><td>1000</td><td>10 min</td></tr>
+                            <tr><td>6</td><td>1000</td><td>2000</td><td>10 min</td></tr>
+                            <tr><td>7</td><td>2000</td><td>4000</td><td>10 min</td></tr>
+                            <tr><td>8</td><td>4000</td><td>8000</td><td>10 min</td></tr>
+                            <tr><td>9</td><td>5000</td><td>10000</td><td>10 min</td></tr>
+                            <tr><td>10</td><td>10000</td><td>20000</td><td>10 min</td></tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Reglas generales */}
+                    <div className="bg-black/30 backdrop-blur-sm border border-yellow-500/20 rounded-lg p-4 space-y-3">
+                      <h3 className="text-yellow-400 font-semibold text-lg">📜 REGLAS GENERALES</h3>
+                      <ul className="text-gray-300 text-sm space-y-1">
+                        <li>• 🃏 Dealer inicial: carta más alta (en empate, se reparte otra)</li>
+                        <li>• 🧍‍♂️ Final de mesa: cuando quedan 3 jugadores</li>
+                        <li>• ⚔️ Eliminación simultánea: se usa el stack inicial para definir posición</li>
+                        <li>• 💱 Cambio de fichas: se reemplazan fichas pequeñas por grandes; fracciones se redondean</li>
+                      </ul>
+                      <div className="mt-3">
+                        <h4 className="text-yellow-400 font-semibold">❌ Misdeals:</h4>
+                        <ul className="text-gray-300 text-sm space-y-1 ml-2">
+                          <li>• 🃎 Cartas expuestas por el dealer</li>
+                          <li>• 🃎 Más de 2 cartas adicionales en mano inicial</li>
+                          <li>• 🃎 Cartas encajonadas</li>
+                          <li>• 🃎 Reparto a asiento vacío o falta de reparto a jugador activo</li>
+                          <li>• 🃎 Reparto fuera de secuencia</li>
+                          <li>• 🃎 Cantidad incorrecta de cartas (si no se puede corregir sin alterar secuencia)</li>
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="border-t border-yellow-500/20 pt-4">
+                      <p className="text-center text-yellow-400 font-semibold">
+                        ¡Que gane el mejor! 🎰
+                      </p>
+                      <p className="text-center text-xs text-gray-400 mt-2">
+                        Temporada 2025/2026
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        };
+
+        ReactDOM.render(<PokerDashboard />, document.getElementById('root'));
+    </script>
 </body>
 </html>
