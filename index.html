@@ -322,4 +322,250 @@
       const filled = players.filter((p) => p.name.trim()).length;
       return (
         <div className="p-4 space-y-3">
-          <div classN
+          <div className="text-sm text-gray-600">Jugadores: {filled}/{MAX_PLAYERS}</div>
+          {players.map((p, i) => (<PlayerCard key={p.id} player={p} onChange={(np) => updatePlayer(i, np)} />))}
+        </div>
+      );
+    }
+
+    function PartidasView({ state, setState }) {
+      const { partidas, players } = state;
+      const floatingCount = partidas.filter((p) => p.isFloating).length;
+      const canCreateFloating = floatingCount < MAX_FLOATING_PER_YEAR;
+      const updatePartida = (i, np) => { const next = [...partidas]; next[i] = np; setState({ ...state, partidas: next }); };
+      const createFloating = () => {
+        if (!canCreateFloating) return;
+        const newP = { id: uid(), date: new Date().toISOString().slice(0, 10), label: "(Flotante)", isFloating: true, host: "",
+          mesas: [
+            { id: uid(), name: "Mesa 1", finalists: { first: "", second: "", third: "" }, integrantes: [], photo: "" },
+            { id: uid(), name: "Mesa 2", finalists: { first: "", second: "", third: "" }, integrantes: [], photo: "" },
+          ],
+        };
+        setState({ ...state, partidas: [...partidas, newP] });
+      };
+      return (
+        <div className="p-4 space-y-4">
+          <div className="sticky top-[100px] z-20 -mx-4 px-4 py-2 bg-white/90 backdrop-blur border-b">
+            <button className="w-full py-3 rounded-2xl bg-green-700 text-white font-medium" onClick={createFloating} disabled={!canCreateFloating}>
+              ➕ Crear partida flotante (máx {MAX_FLOATING_PER_YEAR}/año)
+            </button>
+            {!canCreateFloating && (<div className="text-xs text-red-600 mt-1">Has alcanzado el máximo de partidas flotantes.</div>)}
+          </div>
+          {partidas.slice().sort((a, b) => a.date.localeCompare(b.date)).map((p, i) => (
+            <PartidaCard key={p.id} partida={p} setPartida={(np) => updatePartida(i, np)} players={players} floatingCount={floatingCount} canCreateFloating={false} onCreateFloating={createFloating} />
+          ))}
+        </div>
+      );
+    }
+
+    function ClasificacionView({ state }) {
+      const rows = useMemo(() => computeLeaderboard(state.players, state.partidas), [state]);
+      return (
+        <div className="p-4">
+          <div className="bg-white border rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-6 text-xs font-semibold bg-emerald-700 text-white">
+              <div className="col-span-4 px-3 py-2">Jugador</div>
+              <div className="px-3 py-2 text-center">Mej.12</div>
+              <div className="px-3 py-2 text-center">Puntos</div>
+            </div>
+            {rows.map((r, idx) => (
+              <div key={idx} className="grid grid-cols-6 text-sm border-t">
+                <div className="col-span-4 px-3 py-2 flex items-center gap-2">
+                  <span className="text-gray-500">{idx + 1}.</span>
+                  <span className="font-medium">{r.name}</span>
+                </div>
+                <div className="px-3 py-2 text-center text-gray-700">{r.best12Count}</div>
+                <div className="px-3 py-2 text-center font-semibold">{r.total}</div>
+              </div>
+            ))}
+            {!rows.length && (<div className="px-3 py-6 text-center text-gray-500">Sin resultados aún.</div>)}
+          </div>
+          <div className="text-xs text-gray-500 mt-2">Reglas de puntos: 🥇 6 • 🥈 3 • 🥉 1 (se suman las 12 mejores mesas)</div>
+        </div>
+      );
+    }
+
+    function ReglasView() {
+      return (
+        <div className="p-4 space-y-3 text-sm leading-relaxed">
+          <h3 className="text-lg font-semibold">🎯 REGLAS DEL TORNEO</h3>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">💰 Entrada</h4>
+            <ul className="list-disc pl-5">
+              <li>Costo: $50 USD</li>
+              <li>💳 Pago a: Eliuth Triana</li>
+              <li>🧾 Los participantes no acumularán puntos para la clasificación general hasta confirmar participación y pago</li>
+            </ul>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">🃏 Participantes externos</h4>
+            <ul className="list-disc pl-5">
+              <li>👥 Pueden jugar en las mesas (a discreción del anfitrión)</li>
+              <li>🏆 Acceden al premio de la mesa</li>
+              <li>🚫 No acumulan puntos para el torneo</li>
+            </ul>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">📅 Fechas oficiales</h4>
+            <ul className="list-disc pl-5">
+              <li>🗓 12 Septiembre</li>
+              <li>🗓 26 Septiembre</li>
+              <li>🗓 24 Octubre</li>
+              <li>🗓 21 Noviembre</li>
+              <li>🗓 12 Diciembre</li>
+              <li>🗓 30 Enero</li>
+              <li>🗓 27 Febrero</li>
+              <li>🗓 27 Marzo</li>
+              <li>🗓 24 Abril</li>
+              <li>🗓 29 Mayo</li>
+            </ul>
+            <div className="pt-2"><b>🎉 Gran Final</b> • 📍 Fecha: 12 de Junio</div>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">🏆 Sistema de puntuación</h4>
+            <ul className="list-disc pl-5">
+              <li>🥇 1er lugar: 6 puntos</li>
+              <li>🥈 2do lugar: 3 puntos</li>
+              <li>🥉 3er lugar: 1 punto</li>
+              <li>📊 Se consideran las 12 mejores mesas</li>
+              <li>➕ Si no se llega a 12, se suman los puntos acumulados</li>
+            </ul>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">🎖 Finalistas</h4>
+            <ul className="list-disc pl-5">
+              <li>👑 Los 6 mejores jugadores acceden a la mesa final</li>
+              <li>🔄 Si alguien no puede asistir, entra el siguiente en la tabla</li>
+            </ul>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">⚖️ Desempates</h4>
+            <div>1️⃣ Veces en 1er lugar 2️⃣ Veces en 2do lugar 3️⃣ Veces en 3er lugar 🎩 Veces como anfitrión</div>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">💵 Premios</h4>
+            <ul className="list-disc pl-5">
+              <li>🏆 Ganador de la temporada: $xx.xx</li>
+              <li>🃏 Mesa de finalistas:</li>
+              <ul className="list-disc pl-8">
+                <li>🥇 1er lugar: $xx.xx</li>
+                <li>🥈 2do lugar: $xx.xx</li>
+                <li>🥉 3er lugar: $50</li>
+              </ul>
+            </ul>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">⏱ Estructura de Blinds</h4>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-600">
+                  <th className="py-1">🧮 Nivel</th>
+                  <th className="py-1">💵 Small Blind</th>
+                  <th className="py-1">💵 Big Blind</th>
+                  <th className="py-1">⏳ Duración</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  [1, 50, 100, "15 min"],
+                  [2, 100, 200, "10 min"],
+                  [3, 200, 400, "10 min"],
+                  [4, 300, 600, "10 min"],
+                  [5, 500, 1000, "10 min"],
+                  [6, 1000, 2000, "10 min"],
+                  [7, 2000, 4000, "10 min"],
+                  [8, 4000, 8000, "10 min"],
+                  [9, 5000, 10000, "10 min"],
+                  [10, 10000, 20000, "10 min"],
+                ].map((r) => (
+                  <tr key={r[0]} className="border-t">
+                    <td className="py-1">{r[0]}</td>
+                    <td className="py-1">{r[1]}</td>
+                    <td className="py-1">{r[2]}</td>
+                    <td className="py-1">{r[3]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+          <section className="bg-white rounded-2xl border p-3 space-y-2">
+            <h4 className="font-semibold">📜 REGLAS GENERALES</h4>
+            <ul className="list-disc pl-5">
+              <li>🃏 Dealer inicial: carta más alta (en empate, se reparte otra)</li>
+              <li>🧍‍♂️ Final de mesa: cuando quedan 3 jugadores</li>
+              <li>⚔️ Eliminación simultánea: se usa el stack inicial para definir posición</li>
+              <li>💱 Cambio de fichas: se reemplazan fichas pequeñas por grandes; fracciones se redondean</li>
+              <li>❌ Misdeals:
+                <ul className="list-disc pl-5 mt-1">
+                  <li>🃎 Cartas expuestas por el dealer</li>
+                  <li>🃎 Más de 2 cartas adicionales en mano inicial</li>
+                  <li>🃎 Cartas encajonadas</li>
+                  <li>🃎 Reparto a asiento vacío o falta de reparto a jugador activo</li>
+                  <li>🃎 Reparto fuera de secuencia</li>
+                  <li>🃎 Cantidad incorrecta de cartas (si no se puede corregir sin alterar secuencia)</li>
+                </ul>
+              </li>
+            </ul>
+          </section>
+        </div>
+      );
+    }
+
+    function CopiasView({ state, setState }) {
+      const exportJson = () => {
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a"); a.href = url; a.download = "poker_dashboard_backup.json"; a.click(); URL.revokeObjectURL(url);
+      };
+      const importJson = (file) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          try {
+            const data = JSON.parse(String(reader.result));
+            if (data && data.players && data.partidas) { setState(data); }
+            else { alert("Archivo inválido"); }
+          } catch (e) { alert("Error al leer el JSON"); }
+        };
+        reader.readAsText(file);
+      };
+      return (
+        <div className="p-4 space-y-3">
+          <div className="bg-white border rounded-2xl p-4">
+            <h4 className="font-semibold mb-2">Copias de seguridad</h4>
+            <div className="flex flex-col gap-2">
+              <button className="px-4 py-3 rounded-2xl bg-green-700 text-white" onClick={exportJson}>⬇️ Exportar JSON</button>
+              <label className="px-4 py-3 rounded-2xl border bg-white text-center">⬆️ Importar JSON
+                <input type="file" accept="application/json" className="hidden" onChange={(e) => e.target.files?.[0] && importJson(e.target.files[0])} />
+              </label>
+              <p className="text-xs text-gray-500">Consejo: comparte el JSON en el grupo para que cualquiera pueda restaurar el estado.</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /************************************
+     * App principal
+     ************************************/
+    function App() {
+      const [tab, setTab] = useState("jugadores");
+      const [state, setState] = useState(() => load("poker_state_v1", defaultState));
+      useEffect(() => { save("poker_state_v1", state); }, [state]);
+      return (
+        <div className="min-h-[100dvh] bg-emerald-100/40 text-gray-900">
+          <AppHeader />
+          <TabBar tab={tab} setTab={setTab} />
+          {tab === "jugadores" && <JugadoresView state={state} setState={setState} />}
+          {tab === "partidas" && <PartidasView state={state} setState={setState} />}
+          {tab === "clasificacion" && <ClasificacionView state={state} />}
+          {tab === "reglas" && <ReglasView />}
+          {tab === "copias" && <CopiasView state={state} setState={setState} />}
+          <footer className="py-12" />
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
