@@ -1,375 +1,605 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Poker 2025/2026 - Dashboard Oficial</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gradient-to-br from-green-800 to-green-900 text-white min-h-screen">
+import React, { useState, useRef } from 'react';
+import { Camera, Upload, Download, Plus, Calendar, Trophy, Users, ChevronDown, ChevronUp, FileImage } from 'lucide-react';
+
+const PokerDashboard = () => {
+  // Estados principales
+  const [activeTab, setActiveTab] = useState('players');
+  const [players, setPlayers] = useState([
+    { id: 1, name: '', photo: null, paid: false },
+    { id: 2, name: '', photo: null, paid: false },
+    { id: 3, name: '', photo: null, paid: false },
+  ]);
+
+  // Fechas oficiales del torneo
+  const officialDates = [
+    { date: '12 Septiembre', played: true },
+    { date: '26 Septiembre', played: false },
+    { date: '24 Octubre', played: false },
+    { date: '21 Noviembre', played: false },
+    { date: '12 Diciembre', played: false },
+    { date: '30 Enero', played: false },
+    { date: '27 Febrero', played: false },
+    { date: '27 Marzo', played: false },
+    { date: '24 Abril', played: false },
+    { date: '29 Mayo', played: false },
+  ];
+
+  const [matches, setMatches] = useState(
+    officialDates.map((dateInfo, index) => ({
+      id: index + 1,
+      date: dateInfo.date,
+      played: dateInfo.played,
+      isFloating: false,
+      host: '',
+      showHost: false,
+      mesa1: { first: '', second: '', third: '', photo: null },
+      mesa2: { first: '', second: '', third: '', photo: null }
+    }))
+  );
+
+  const [floatingMatches, setFloatingMatches] = useState([]);
+  const [showRules, setShowRules] = useState(false);
+  
+  const fileInputRef = useRef(null);
+  const jsonInputRef = useRef(null);
+
+  // Funciones para jugadores
+  const addPlayer = () => {
+    if (players.length < 15) {
+      setPlayers([...players, {
+        id: Date.now(),
+        name: '',
+        photo: null,
+        paid: false
+      }]);
+    }
+  };
+
+  const updatePlayer = (id, field, value) => {
+    setPlayers(players.map(player => 
+      player.id === id ? { ...player, [field]: value } : player
+    ));
+  };
+
+  const handlePhotoUpload = (playerId, event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        updatePlayer(playerId, 'photo', e.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Funciones para partidas flotantes
+  const addFloatingMatch = () => {
+    const newMatch = {
+      id: Date.now(),
+      date: '',
+      played: false,
+      isFloating: true,
+      host: '',
+      showHost: false,
+      mesa1: { first: '', second: '', third: '', photo: null },
+      mesa2: { first: '', second: '', third: '', photo: null }
+    };
+    setFloatingMatches([...floatingMatches, newMatch]);
+    setMatches([...matches, newMatch]);
+  };
+
+  // Funciones para subir fotos de mesas
+  const handleMesaPhotoUpload = (matchId, mesa, event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setMatches(matches.map(match => 
+          match.id === matchId ? {
+            ...match,
+            [mesa]: { ...match[mesa], photo: e.target.result }
+          } : match
+        ));
+        setFloatingMatches(floatingMatches.map(match => 
+          match.id === matchId ? {
+            ...match,
+            [mesa]: { ...match[mesa], photo: e.target.result }
+          } : match
+        ));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Funciones de exportar/importar
+  const exportData = () => {
+    const data = {
+      players,
+      matches: [...matches, ...floatingMatches],
+      exportDate: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'poker-tournament-backup.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const importData = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (data.players) setPlayers(data.players);
+          if (data.matches) {
+            const official = data.matches.filter(m => !m.isFloating);
+            const floating = data.matches.filter(m => m.isFloating);
+            setMatches(official);
+            setFloatingMatches(floating);
+          }
+        } catch (error) {
+          alert('Error al importar el archivo');
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+
+  const updateMatch = (matchId, field, value, mesa = null) => {
+    const updateFn = (match) => {
+      if (match.id === matchId) {
+        if (mesa) {
+          return { ...match, [mesa]: { ...match[mesa], [field]: value } };
+        }
+        return { ...match, [field]: value };
+      }
+      return match;
+    };
     
-    <!-- Header -->
-    <header class="bg-green-900/80 backdrop-blur-sm border-b border-green-700 sticky top-0 z-20">
-        <div class="max-w-md mx-auto px-4 py-4">
-            <div class="flex items-center gap-3">
-                <div class="text-3xl">🃏</div>
-                <div>
-                    <div class="text-xs uppercase opacity-80">Texas Hold'em Poker</div>
-                    <h1 class="text-xl font-bold text-yellow-400">Poker 2025/2026</h1>
+    setMatches(matches.map(updateFn));
+    setFloatingMatches(floatingMatches.map(updateFn));
+  };
+
+  const toggleHost = (matchId) => {
+    const updateFn = (match) => 
+      match.id === matchId ? { ...match, showHost: !match.showHost } : match;
+    
+    setMatches(matches.map(updateFn));
+    setFloatingMatches(floatingMatches.map(updateFn));
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-green-900 via-green-800 to-black text-white">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-green-600 to-green-700 p-4 shadow-2xl">
+        <div className="flex items-center justify-center mb-2">
+          <div className="bg-green-500 rounded-lg p-2 mr-3">
+            <span className="text-2xl">♠️</span>
+          </div>
+          <h1 className="text-2xl font-bold text-center">Texas Hold'em Poker</h1>
+        </div>
+        <h2 className="text-xl text-center font-semibold text-green-100">
+          Poker 2025/2026
+        </h2>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex overflow-x-auto bg-green-700 shadow-lg">
+        {[
+          { id: 'players', label: 'Jugadores', icon: Users },
+          { id: 'matches', label: 'Partidas', icon: Calendar },
+          { id: 'ranking', label: 'Ranking', icon: Trophy },
+          { id: 'rules', label: 'Reglas', icon: FileImage }
+        ].map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => {
+              if (id === 'rules') {
+                setShowRules(true);
+              } else {
+                setActiveTab(id);
+                setShowRules(false);
+              }
+            }}
+            className={`flex-1 p-3 flex items-center justify-center space-x-2 font-medium transition-all ${
+              (activeTab === id && !showRules) || (id === 'rules' && showRules)
+                ? 'bg-green-800 text-white border-b-2 border-green-300'
+                : 'text-green-100 hover:bg-green-600'
+            }`}
+          >
+            <Icon size={20} />
+            <span className="text-sm">{label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Export/Import Controls */}
+      <div className="p-4 bg-green-800 flex justify-center space-x-4">
+        <button
+          onClick={exportData}
+          className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition-colors"
+        >
+          <Download size={16} />
+          <span>Exportar</span>
+        </button>
+        <button
+          onClick={() => jsonInputRef.current?.click()}
+          className="flex items-center space-x-2 bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors"
+        >
+          <Upload size={16} />
+          <span>Importar</span>
+        </button>
+        <input
+          ref={jsonInputRef}
+          type="file"
+          accept=".json"
+          onChange={importData}
+          className="hidden"
+        />
+      </div>
+
+      {/* Content */}
+      <div className="p-4">
+        {showRules && (
+          <div className="bg-gradient-to-br from-green-800 to-green-900 rounded-xl p-6 shadow-2xl">
+            <h3 className="text-2xl font-bold mb-6 text-center text-green-300">🎯 REGLAS DEL TORNEO</h3>
+            
+            <div className="space-y-6 text-sm leading-relaxed">
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">💰 Entrada</h4>
+                <ul className="space-y-2 pl-4">
+                  <li>• Costo: $50 USD</li>
+                  <li>• 💳 Pago a: Eliuth Triana</li>
+                  <li>• 🧾 Los participantes no acumularán puntos para la clasificación general hasta confirmar participación y pago</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">🃏 Participantes externos</h4>
+                <ul className="space-y-2 pl-4">
+                  <li>• 👥 Pueden jugar en las mesas (a discreción del anfitrión)</li>
+                  <li>• 🏆 Acceden al premio de la mesa</li>
+                  <li>• 🚫 No acumulan puntos para el torneo</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">📅 Fechas oficiales</h4>
+                <ul className="space-y-1 pl-4">
+                  <li>• 🗓 12 Septiembre</li>
+                  <li>• 🗓 26 Septiembre</li>
+                  <li>• 🗓 24 Octubre</li>
+                  <li>• 🗓 21 Noviembre</li>
+                  <li>• 🗓 12 Diciembre</li>
+                  <li>• 🗓 30 Enero</li>
+                  <li>• 🗓 27 Febrero</li>
+                  <li>• 🗓 27 March</li>
+                  <li>• 🗓 24 Abril</li>
+                  <li>• 🗓 29 Mayo</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">➕ Fechas adicionales</h4>
+                <ul className="space-y-2 pl-4">
+                  <li>• 🔄 Máximo 2 por mes</li>
+                  <li>• 👥 Requiere mínimo 6 jugadores del torneo</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">🎉 Gran Final</h4>
+                <p className="pl-4">• 📍 Fecha: 12 de Junio</p>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">🏆 Sistema de puntuación</h4>
+                <ul className="space-y-2 pl-4">
+                  <li>• 🥇 1er lugar: 6 puntos</li>
+                  <li>• 🥈 2do lugar: 3 puntos</li>
+                  <li>• 🥉 3er lugar: 1 punto</li>
+                  <li>• 📊 Se consideran las 12 mejores mesas</li>
+                  <li>• ➕ Si no se llega a 12, se suman los puntos acumulados</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">🎖 Finalistas</h4>
+                <ul className="space-y-2 pl-4">
+                  <li>• 👑 Los 6 mejores jugadores acceden a la mesa final</li>
+                  <li>• 🔄 Si alguien no puede asistir, entra el siguiente en la tabla</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">⚖️ Desempates</h4>
+                <p className="pl-4">1️⃣ Veces en 1er lugar 2️⃣ Veces en 2do lugar 3️⃣ Veces en 3er lugar 🎩 Veces como anfitrión</p>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">💵 Premios</h4>
+                <ul className="space-y-2 pl-4">
+                  <li>• 🏆 Ganador de la temporada: $xx.xx</li>
+                  <li>• 🃏 Mesa de finalistas:</li>
+                  <li className="pl-4">o 🥇 1er lugar: $xx.xx</li>
+                  <li className="pl-4">o 🥈 2do lugar: $xx.xx</li>
+                  <li className="pl-4">o 🥉 3er lugar: $50</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">⏱ Estructura de Blinds</h4>
+                <div className="bg-green-900 rounded-lg p-4 overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-green-600">
+                        <th className="p-2">🧮 Nivel</th>
+                        <th className="p-2">💵 Small Blind</th>
+                        <th className="p-2">💵 Big Blind</th>
+                        <th className="p-2">⏳ Duración</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        [1, 50, 100, '15 min'],
+                        [2, 100, 200, '10 min'],
+                        [3, 200, 400, '10 min'],
+                        [4, 300, 600, '10 min'],
+                        [5, 500, 1000, '10 min'],
+                        [6, 1000, 2000, '10 min'],
+                        [7, 2000, 4000, '10 min'],
+                        [8, 4000, 8000, '10 min'],
+                        [9, 5000, 10000, '10 min'],
+                        [10, 10000, 20000, '10 min']
+                      ].map(([level, sb, bb, duration]) => (
+                        <tr key={level} className="border-b border-green-800">
+                          <td className="p-2 text-center">{level}</td>
+                          <td className="p-2 text-center">{sb}</td>
+                          <td className="p-2 text-center">{bb}</td>
+                          <td className="p-2 text-center">{duration}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div class="ml-auto flex gap-2">
-                    <button onclick="exportData()" class="px-3 py-1 bg-blue-600 rounded text-sm">📤</button>
-                    <label class="px-3 py-1 bg-purple-600 rounded text-sm cursor-pointer">
-                        📥
-                        <input type="file" class="hidden" onchange="importData(event)">
-                    </label>
-                </div>
+              </div>
+
+              <div>
+                <h4 className="text-lg font-semibold text-green-300 mb-3">📜 REGLAS GENERALES</h4>
+                <ul className="space-y-2 pl-4 text-sm">
+                  <li>• 🃏 Dealer inicial: carta más alta (en empate, se reparte otra)</li>
+                  <li>• 🧍‍♂️ Final de mesa: cuando quedan 3 jugadores</li>
+                  <li>• ⚔️ Eliminación simultánea: se usa el stack inicial para definir posición</li>
+                  <li>• 💱 Cambio de fichas: se reemplazan fichas pequeñas por grandes; fracciones se redondean</li>
+                  <li>• ❌ Misdeals:</li>
+                  <li className="pl-4">o 🃎 Cartas expuestas por el dealer</li>
+                  <li className="pl-4">o 🃎 Más de 2 cartas adicionales en mano inicial</li>
+                  <li className="pl-4">o 🃎 Cartas encajonadas</li>
+                  <li className="pl-4">o 🃎 Reparto a asiento vacío o falta de reparto a jugador activo</li>
+                  <li className="pl-4">o 🃎 Reparto fuera de secuencia</li>
+                  <li className="pl-4">o 🃎 Cantidad incorrecta de cartas (si no se puede corregir sin alterar secuencia)</li>
+                </ul>
+              </div>
             </div>
-            
-            <nav class="mt-3 grid grid-cols-4 gap-2 text-xs">
-                <button onclick="setTab('dashboard')" id="btn-dashboard" class="py-2 bg-green-700 rounded font-semibold">🏠 Inicio</button>
-                <button onclick="setTab('jugadores')" id="btn-jugadores" class="py-2 bg-green-800 rounded">👥 Jugadores</button>
-                <button onclick="setTab('partidas')" id="btn-partidas" class="py-2 bg-green-800 rounded">🗓️ Partidas</button>
-                <button onclick="setTab('reglas')" id="btn-reglas" class="py-2 bg-green-800 rounded">📜 Reglas</button>
-            </nav>
-        </div>
-    </header>
+          </div>
+        )}
 
-    <!-- Contenido -->
-    <main id="content" class="max-w-md mx-auto p-4 pb-20">
-        <div class="text-center py-8">
-            <div class="text-4xl mb-4">🎮</div>
-            <div class="font-bold text-lg">¡Bienvenido al Dashboard!</div>
-            <div class="text-sm opacity-80 mt-2">Cargando datos del torneo...</div>
-        </div>
-    </main>
+        {activeTab === 'players' && !showRules && (
+          <div>
+            <div className="flex justify-between items-center mb-6">
+              <h3 className="text-xl font-bold">Jugadores Registrados</h3>
+              {players.length < 15 && (
+                <button
+                  onClick={addPlayer}
+                  className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors"
+                >
+                  <Plus size={16} />
+                  <span>Agregar</span>
+                </button>
+              )}
+            </div>
 
-    <!-- Footer -->
-    <footer class="fixed bottom-0 w-full bg-green-900/90 backdrop-blur-sm border-t border-green-700">
-        <div class="max-w-md mx-auto p-3 grid grid-cols-3 gap-2 text-xs">
-            <button onclick="setTab('jugadores')" class="py-2 bg-green-700 rounded font-semibold">👥 Editar</button>
-            <button onclick="shareData()" class="py-2 bg-blue-600 rounded font-semibold">🔗 Compartir</button>
-            <button onclick="addPlayer()" class="py-2 bg-purple-600 rounded font-semibold">➕ Jugador</button>
-        </div>
-    </footer>
-
-    <script>
-        // Datos del torneo
-        let appData = {
-            players: [],
-            matches: []
-        };
-
-        // Inicializar
-        function init() {
-            loadData();
-            setTab('dashboard');
-        }
-
-        // Cargar datos
-        function loadData() {
-            const saved = localStorage.getItem('poker_data');
-            if (saved) {
-                appData = JSON.parse(saved);
-            } else {
-                // Crear jugadores por defecto
-                for (let i = 1; i <= 15; i++) {
-                    appData.players.push({
-                        id: i,
-                        name: `Jugador ${i}`,
-                        paid: false,
-                        points: Math.floor(Math.random() * 50) // Puntos de ejemplo
-                    });
-                }
-                saveData();
-            }
-        }
-
-        // Guardar datos
-        function saveData() {
-            localStorage.setItem('poker_data', JSON.stringify(appData));
-        }
-
-        // Cambiar pestaña
-        function setTab(tab) {
-            // Resetear botones
-            document.querySelectorAll('nav button').forEach(btn => {
-                btn.className = 'py-2 bg-green-800 rounded';
-            });
-            
-            // Activar botón actual
-            const activeBtn = document.getElementById(`btn-${tab}`);
-            if (activeBtn) {
-                activeBtn.className = 'py-2 bg-green-700 rounded font-semibold';
-            }
-
-            // Mostrar contenido
-            const content = document.getElementById('content');
-            
-            switch(tab) {
-                case 'dashboard':
-                    content.innerHTML = renderDashboard();
-                    break;
-                case 'jugadores':
-                    content.innerHTML = renderJugadores();
-                    break;
-                case 'partidas':
-                    content.innerHTML = renderPartidas();
-                    break;
-                case 'reglas':
-                    content.innerHTML = renderReglas();
-                    break;
-            }
-        }
-
-        // Renderizar dashboard
-        function renderDashboard() {
-            const sortedPlayers = [...appData.players].sort((a, b) => b.points - a.points);
-            const paidCount = appData.players.filter(p => p.paid).length;
-            
-            return `
-                <div class="space-y-4">
-                    <!-- Estadísticas -->
-                    <div class="bg-green-800/50 rounded-xl p-4 border border-green-700">
-                        <h2 class="text-lg font-bold mb-3">📊 Estadísticas</h2>
-                        <div class="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                                <div class="text-2xl font-bold text-yellow-400">${paidCount}</div>
-                                <div class="text-xs opacity-80">Pagados</div>
-                            </div>
-                            <div>
-                                <div class="text-2xl font-bold text-green-400">${appData.players.length}</div>
-                                <div class="text-xs opacity-80">Jugadores</div>
-                            </div>
-                            <div>
-                                <div class="text-2xl font-bold text-blue-400">$${paidCount * 50}</div>
-                                <div class="text-xs opacity-80">Bote</div>
-                            </div>
-                        </div>
+            <div className="grid gap-4">
+              {players.map((player) => (
+                <div key={player.id} className="bg-gradient-to-r from-green-800 to-green-900 rounded-xl p-4 shadow-lg">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <div 
+                        onClick={() => {
+                          const input = document.createElement('input');
+                          input.type = 'file';
+                          input.accept = 'image/*';
+                          input.onchange = (e) => handlePhotoUpload(player.id, e);
+                          input.click();
+                        }}
+                        className="w-16 h-16 bg-green-700 rounded-full flex items-center justify-center cursor-pointer hover:bg-green-600 transition-colors overflow-hidden"
+                      >
+                        {player.photo ? (
+                          <img src={player.photo} alt="Jugador" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <Camera size={24} className="text-green-300" />
+                        )}
+                      </div>
                     </div>
-
-                    <!-- Clasificación -->
-                    <div class="bg-green-800/50 rounded-xl p-4 border border-green-700">
-                        <h2 class="text-lg font-bold mb-3">🏆 Top 6 Clasificación</h2>
-                        <div class="space-y-2">
-                            ${sortedPlayers.slice(0, 6).map((player, idx) => `
-                                <div class="flex items-center justify-between p-3 rounded-lg ${
-                                    idx === 0 ? 'bg-yellow-600/30 border border-yellow-500/50' :
-                                    idx === 1 ? 'bg-gray-500/30 border border-gray-400/50' :
-                                    idx === 2 ? 'bg-orange-600/30 border border-orange-500/50' :
-                                    'bg-green-700/30'
-                                }">
-                                    <div class="flex items-center gap-3">
-                                        <span class="text-xl">
-                                            ${idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}°`}
-                                        </span>
-                                        <div>
-                                            <div class="font-semibold">${player.name}</div>
-                                            <div class="text-xs ${player.paid ? 'text-green-400' : 'text-red-400'}">
-                                                ${player.paid ? '✅ Pagado' : '❌ No pagado'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="text-xl font-bold">${player.points}</div>
-                                </div>
-                            `).join('')}
-                        </div>
+                    
+                    <div className="flex-1">
+                      <input
+                        type="text"
+                        placeholder="Nombre y Apellidos"
+                        value={player.name}
+                        onChange={(e) => updatePlayer(player.id, 'name', e.target.value)}
+                        className="w-full bg-green-700 text-white placeholder-green-300 px-3 py-2 rounded-lg border border-green-600 focus:border-green-400 focus:outline-none"
+                      />
                     </div>
+                  </div>
+                  
+                  <div className="mt-3">
+                    <button
+                      onClick={() => updatePlayer(player.id, 'paid', !player.paid)}
+                      className={`w-full py-2 px-4 rounded-lg font-medium transition-all ${
+                        player.paid 
+                          ? 'bg-green-500 hover:bg-green-400 text-white' 
+                          : 'bg-red-600 hover:bg-red-500 text-white'
+                      }`}
+                    >
+                      {player.paid ? '✅ PAGADO' : '❌ NO PAGADO'}
+                    </button>
+                  </div>
                 </div>
-            `;
-        }
+              ))}
+            </div>
+          </div>
+        )}
 
-        // Renderizar jugadores
-        function renderJugadores() {
-            return `
-                <div class="bg-green-800/50 rounded-xl p-4 border border-green-700">
-                    <h2 class="text-lg font-bold mb-4">👥 Gestión de Jugadores</h2>
-                    <div class="space-y-3">
-                        ${appData.players.map(player => `
-                            <div class="bg-green-700/40 rounded-lg p-3 border border-green-600">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center">
-                                        👤
-                                    </div>
-                                    <div class="flex-1">
-                                        <input value="${player.name}" 
-                                               onchange="updatePlayerName(${player.id}, this.value)"
-                                               class="w-full bg-transparent border-b border-green-600 focus:border-green-400 outline-none pb-1">
-                                        <div class="flex gap-2 mt-2">
-                                            <button onclick="togglePaid(${player.id})" 
-                                                    class="px-3 py-1 rounded text-xs ${player.paid ? 'bg-green-600' : 'bg-red-600'}">
-                                                ${player.paid ? '✅ Pagado' : '❌ No pagado'}
-                                            </button>
-                                            <span class="px-3 py-1 bg-blue-600 rounded text-xs">
-                                                ${player.points} pts
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            `;
-        }
-
-        // Renderizar partidas
-        function renderPartidas() {
-            return `
-                <div class="bg-green-800/50 rounded-xl p-4 border border-green-700">
-                    <h2 class="text-lg font-bold mb-4">🗓️ Fechas del Torneo</h2>
-                    <div class="space-y-3">
-                        <div class="bg-green-700/40 rounded-lg p-3">
-                            <div class="font-semibold">12 Septiembre 2025</div>
-                            <div class="text-sm opacity-80">Ya jugada ✅</div>
-                        </div>
-                        <div class="bg-green-700/40 rounded-lg p-3">
-                            <div class="font-semibold">26 Septiembre 2025</div>
-                            <div class="text-sm opacity-80">Próxima partida 🎯</div>
-                        </div>
-                        <div class="bg-green-700/40 rounded-lg p-3">
-                            <div class="font-semibold">24 Octubre 2025</div>
-                            <div class="text-sm opacity-80">Pendiente</div>
-                        </div>
-                        <div class="bg-green-700/40 rounded-lg p-3">
-                            <div class="font-semibold">21 Noviembre 2025</div>
-                            <div class="text-sm opacity-80">Pendiente</div>
-                        </div>
-                        <div class="bg-green-700/40 rounded-lg p-3">
-                            <div class="font-semibold">12 Junio 2026</div>
-                            <div class="text-sm opacity-80">🏆 Gran Final</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Renderizar reglas
-        function renderReglas() {
-            return `
-                <div class="bg-green-800/50 rounded-xl p-4 border border-green-700">
-                    <h2 class="text-lg font-bold mb-4">📜 Reglas del Torneo</h2>
-                    <div class="space-y-4 text-sm">
-                        <div>
-                            <h3 class="font-bold text-green-300 mb-2">💰 Entrada</h3>
-                            <ul class="space-y-1 pl-4">
-                                <li>• Costo: $50 USD</li>
-                                <li>• 💳 Pago a: Eliuth Triana</li>
-                                <li>• Solo se acumulan puntos tras pagar</li>
-                            </ul>
-                        </div>
-                        
-                        <div>
-                            <h3 class="font-bold text-green-300 mb-2">🏆 Sistema de puntuación</h3>
-                            <ul class="space-y-1 pl-4">
-                                <li>• 🥇 1er lugar: 6 puntos</li>
-                                <li>• 🥈 2do lugar: 3 puntos</li>
-                                <li>• 🥉 3er lugar: 1 punto</li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h3 class="font-bold text-green-300 mb-2">📅 Fechas importantes</h3>
-                            <ul class="space-y-1 pl-4">
-                                <li>• 11 fechas oficiales</li>
-                                <li>• Máximo 6 partidas flotantes</li>
-                                <li>• Gran Final: 12 Junio 2026</li>
-                            </ul>
-                        </div>
-
-                        <div>
-                            <h3 class="font-bold text-green-300 mb-2">🎖️ Finalistas</h3>
-                            <ul class="space-y-1 pl-4">
-                                <li>• Top 6 jugadores clasifican</li>
-                                <li>• Se consideran 12 mejores mesas</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Funciones de jugadores
-        function updatePlayerName(id, name) {
-            const player = appData.players.find(p => p.id === id);
-            if (player) {
-                player.name = name;
-                saveData();
-            }
-        }
-
-        function togglePaid(id) {
-            const player = appData.players.find(p => p.id === id);
-            if (player) {
-                player.paid = !player.paid;
-                saveData();
-                setTab('jugadores'); // Refresh
-            }
-        }
-
-        function addPlayer() {
-            if (appData.players.length >= 15) {
-                alert('Máximo 15 jugadores');
-                return;
-            }
-            const newId = Math.max(...appData.players.map(p => p.id)) + 1;
-            appData.players.push({
-                id: newId,
-                name: `Jugador ${newId}`,
-                paid: false,
-                points: 0
-            });
-            saveData();
-            setTab('jugadores');
-        }
-
-        // Exportar/Importar
-        function exportData() {
-            const dataStr = JSON.stringify(appData, null, 2);
-            const blob = new Blob([dataStr], {type: 'application/json'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'poker_backup.json';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        {activeTab === 'matches' && !showRules && (
+          <div>
+            <h3 className="text-xl font-bold mb-6">Calendario de Partidas</h3>
             
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    appData = JSON.parse(e.target.result);
-                    saveData();
-                    setTab('dashboard');
-                    alert('✅ Datos importados');
-                } catch (error) {
-                    alert('❌ Error al importar');
-                }
-            };
-            reader.readAsText(file);
-        }
+            <div className="space-y-4">
+              {matches.map((match) => (
+                <div key={match.id} className="bg-gradient-to-br from-green-800 to-green-900 rounded-xl shadow-lg overflow-hidden">
+                  <div className="p-4 bg-green-700 flex justify-between items-center">
+                    <div>
+                      <h4 className="font-bold text-lg">
+                        {match.isFloating ? (
+                          <input
+                            type="text"
+                            placeholder="Fecha (ej: 15 Octubre)"
+                            value={match.date}
+                            onChange={(e) => updateMatch(match.id, 'date', e.target.value)}
+                            className="bg-green-600 text-white placeholder-green-300 px-2 py-1 rounded border border-green-500 focus:border-green-300 focus:outline-none"
+                          />
+                        ) : (
+                          match.date
+                        )}
+                        {match.isFloating && <span className="ml-2 text-sm bg-yellow-600 px-2 py-1 rounded">FLOTANTE</span>}
+                      </h4>
+                    </div>
+                    <button
+                      onClick={() => toggleHost(match.id)}
+                      className="text-green-300 hover:text-green-100"
+                    >
+                      {match.showHost ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+                    </button>
+                  </div>
 
-        // Compartir
-        function shareData() {
-            const url = window.location.href;
-            if (navigator.share) {
-                navigator.share({
-                    title: 'Poker 2025/2026',
-                    url: url
-                });
-            } else {
-                navigator.clipboard.writeText(url).then(() => {
-                    alert('🔗 Enlace copiado al portapapeles');
-                });
-            }
-        }
+                  {match.showHost && (
+                    <div className="p-4 bg-green-750">
+                      <input
+                        type="text"
+                        placeholder="Nombre del Anfitrión"
+                        value={match.host}
+                        onChange={(e) => updateMatch(match.id, 'host', e.target.value)}
+                        className="w-full bg-green-700 text-white placeholder-green-300 px-3 py-2 rounded-lg border border-green-600 focus:border-green-400 focus:outline-none"
+                      />
+                    </div>
+                  )}
 
-        // Inicializar cuando carga la página
-        window.addEventListener('load', init);
-    </script>
-</body>
-</html>
+                  <div className="p-4 space-y-6">
+                    {['mesa1', 'mesa2'].map((mesa, index) => (
+                      <div key={mesa} className="bg-green-800 rounded-lg p-4">
+                        <div className="flex justify-between items-center mb-4">
+                          <h5 className="font-semibold text-green-300">Mesa {index + 1}</h5>
+                          <button
+                            onClick={() => {
+                              const input = document.createElement('input');
+                              input.type = 'file';
+                              input.accept = 'image/*';
+                              input.onchange = (e) => handleMesaPhotoUpload(match.id, mesa, e);
+                              input.click();
+                            }}
+                            className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm transition-colors"
+                          >
+                            <Camera size={14} />
+                            <span>Foto Mesa</span>
+                          </button>
+                        </div>
+
+                        {match[mesa].photo && (
+                          <div className="mb-4">
+                            <img 
+                              src={match[mesa].photo} 
+                              alt={`Foto Mesa ${index + 1}`}
+                              className="w-full h-auto max-h-64 object-contain rounded-lg border-2 border-green-600"
+                            />
+                          </div>
+                        )}
+
+                        <div className="grid gap-3">
+                          {['first', 'second', 'third'].map((position, posIndex) => (
+                            <div key={position} className="flex items-center space-x-3">
+                              <span className="text-sm font-medium text-green-300 w-12">
+                                {posIndex === 0 ? '🥇 1°' : posIndex === 1 ? '🥈 2°' : '🥉 3°'}
+                              </span>
+                              <select
+                                value={match[mesa][position]}
+                                onChange={(e) => updateMatch(match.id, position, e.target.value, mesa)}
+                                className="flex-1 bg-green-700 text-white px-3 py-2 rounded border border-green-600 focus:border-green-400 focus:outline-none"
+                              >
+                                <option value="">Seleccionar jugador</option>
+                                {players.filter(p => p.name.trim()).map(player => (
+                                  <option key={player.id} value={player.name}>
+                                    {player.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-8 text-center">
+              <button
+                onClick={addFloatingMatch}
+                className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white px-6 py-3 rounded-xl font-medium transition-all transform hover:scale-105 shadow-lg"
+              >
+                ➕ Agregar Partida Flotante
+              </button>
+            </div>
+
+            {/* Gran Final */}
+            <div className="mt-8 bg-gradient-to-br from-yellow-600 via-orange-600 to-red-600 rounded-xl p-6 shadow-2xl">
+              <h4 className="text-2xl font-bold text-center text-white mb-2">🏆 GRAN FINAL</h4>
+              <p className="text-center text-yellow-100 text-lg font-semibold">12 de Junio 2026</p>
+              <p className="text-center text-yellow-200 mt-2">Los 6 mejores jugadores de la temporada</p>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'ranking' && !showRules && (
+          <div>
+            <h3 className="text-xl font-bold mb-6">🏆 Clasificación General</h3>
+            <div className="bg-gradient-to-br from-green-800 to-green-900 rounded-xl p-6 shadow-xl">
+              <p className="text-center text-green-300 text-lg">
+                El ranking se actualizará automáticamente basado en los resultados de las partidas.
+              </p>
+              <div className="mt-6 text-center">
+                <div className="inline-block bg-green-700 rounded-lg p-4">
+                  <h4 className="font-bold text-green-300 mb-2">Sistema de Puntuación</h4>
+                  <div className="text-sm space-y-1">
+                    <p>🥇 1er lugar: 6 puntos</p>
+                    <p>🥈 2do lugar: 3 puntos</p>
+                    <p>🥉 3er lugar: 1 punto</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default PokerDashboard;
