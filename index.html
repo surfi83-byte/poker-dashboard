@@ -5,17 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Poker Tournament Dashboard 2025/2026</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'green-750': '#166534',
-                    }
-                }
-            }
-        }
-    </script>
     <style>
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -347,7 +336,7 @@
                 player.id === id ? { ...player, [field]: value } : player
             );
             renderPlayers();
-            if (document.getElementById('matches-section').classList.contains('hidden') === false) {
+            if (!document.getElementById('matches-section').classList.contains('hidden')) {
                 renderMatches();
             }
         }
@@ -477,7 +466,9 @@
             const container = document.getElementById('matches-container');
             container.innerHTML = '';
 
-            [...matches, ...floatingMatches].forEach(match => {
+            const allMatches = [...matches.filter(m => !m.isFloating), ...floatingMatches];
+
+            allMatches.forEach(match => {
                 const matchDiv = document.createElement('div');
                 matchDiv.className = 'bg-gradient-to-br from-green-800 to-green-900 rounded-xl shadow-lg overflow-hidden';
                 
@@ -522,3 +513,172 @@
                                 ${match[mesa].photo ? `
                                     <div class="mb-4">
                                         <img src="${match[mesa].photo}" alt="Foto Mesa ${index + 1}" class="w-full h-auto max-h-64 object-contain rounded-lg border-2 border-green-600">
+                                    </div>
+                                ` : ''}
+
+                                <div class="grid gap-3">
+                                    ${['first', 'second', 'third'].map((position, posIndex) => `
+                                        <div class="flex items-center space-x-3">
+                                            <span class="text-sm font-medium text-green-300 w-12">
+                                                ${posIndex === 0 ? '🥇 1°' : posIndex === 1 ? '🥈 2°' : '🥉 3°'}
+                                            </span>
+                                            <select
+                                                value="${match[mesa][position] || ''}"
+                                                onchange="updateMatch(${match.id}, '${position}', this.value, '${mesa}')"
+                                                class="flex-1 bg-green-700 text-white px-3 py-2 rounded border border-green-600 focus:border-green-400 focus:outline-none"
+                                            >
+                                                <option value="">Seleccionar jugador</option>
+                                                ${playerOptions}
+                                            </select>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                
+                container.appendChild(matchDiv);
+            });
+        }
+
+        function renderRanking() {
+            const container = document.getElementById('ranking-container');
+            
+            // Calculate player rankings
+            const playerStats = {};
+            
+            // Initialize stats for all players
+            players.forEach(player => {
+                if (player.name.trim()) {
+                    playerStats[player.name] = {
+                        name: player.name,
+                        points: 0,
+                        first: 0,
+                        second: 0,
+                        third: 0,
+                        hostCount: 0,
+                        paid: player.paid
+                    };
+                }
+            });
+
+            // Calculate points from matches
+            const allMatches = [...matches.filter(m => !m.isFloating), ...floatingMatches];
+            allMatches.forEach(match => {
+                if (match.host && playerStats[match.host]) {
+                    playerStats[match.host].hostCount++;
+                }
+
+                ['mesa1', 'mesa2'].forEach(mesa => {
+                    const mesaData = match[mesa];
+                    if (mesaData.first && playerStats[mesaData.first]) {
+                        playerStats[mesaData.first].points += 6;
+                        playerStats[mesaData.first].first++;
+                    }
+                    if (mesaData.second && playerStats[mesaData.second]) {
+                        playerStats[mesaData.second].points += 3;
+                        playerStats[mesaData.second].second++;
+                    }
+                    if (mesaData.third && playerStats[mesaData.third]) {
+                        playerStats[mesaData.third].points += 1;
+                        playerStats[mesaData.third].third++;
+                    }
+                });
+            });
+
+            // Sort players by ranking criteria
+            const sortedPlayers = Object.values(playerStats).sort((a, b) => {
+                if (b.points !== a.points) return b.points - a.points;
+                if (b.first !== a.first) return b.first - a.first;
+                if (b.second !== a.second) return b.second - a.second;
+                if (b.third !== a.third) return b.third - a.third;
+                return b.hostCount - a.hostCount;
+            });
+
+            if (sortedPlayers.length === 0) {
+                container.innerHTML = `
+                    <p class="text-center text-green-300 text-lg mb-6">
+                        El ranking se actualizará automáticamente basado en los resultados de las partidas.
+                    </p>
+                `;
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="space-y-4">
+                    ${sortedPlayers.map((player, index) => `
+                        <div class="flex items-center justify-between p-4 bg-green-700 rounded-lg ${!player.paid ? 'opacity-75 border-2 border-red-500' : ''}">
+                            <div class="flex items-center space-x-4">
+                                <span class="text-2xl font-bold text-green-300">${index + 1}</span>
+                                <div>
+                                    <div class="font-semibold text-lg">${player.name}</div>
+                                    <div class="text-sm text-green-300">
+                                        🥇${player.first} 🥈${player.second} 🥉${player.third} 🎩${player.hostCount}
+                                    </div>
+                                    ${!player.paid ? '<div class="text-xs text-red-300">⚠️ No pagado - Sin puntos oficiales</div>' : ''}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-yellow-400">${player.paid ? player.points : 0}</div>
+                                <div class="text-sm text-green-300">puntos</div>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // Export/Import functions
+        function exportData() {
+            const data = {
+                players,
+                matches: [...matches, ...floatingMatches],
+                exportDate: new Date().toISOString()
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'poker-tournament-backup.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        if (data.players) {
+                            players = data.players;
+                        }
+                        if (data.matches) {
+                            const official = data.matches.filter(m => !m.isFloating);
+                            const floating = data.matches.filter(m => m.isFloating);
+                            matches = official;
+                            floatingMatches = floating;
+                        }
+                        // Refresh current view
+                        const currentSection = document.querySelector('.section:not(.hidden)').id.replace('-section', '');
+                        showSection(currentSection);
+                        alert('Datos importados correctamente');
+                    } catch (error) {
+                        alert('Error al importar el archivo. Verifica que sea un archivo JSON válido.');
+                    }
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            showSection('players');
+        });
+    </script>
+</body>
+</html>
