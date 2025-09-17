@@ -23,82 +23,53 @@
     <div id="root"></div>
 
     
-    <!-- Supabase backend bridge (mantiene tu UI tal cual) -->
+    <!-- Supabase backend bridge -->
     <script>
-    // === Pega tus credenciales públicas (Project Settings → API) ===
-    const SUPABASE_URL  = "https://ynqkncnsqfjtcvvyklvy.supabase.co"; // <-- CAMBIAR
-    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucWtuY25zcWZqdGN2dnlrbHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDAwMTEsImV4cCI6MjA3MzcxNjAxMX0.YE41Q4eX9UjuocXxF3e2b6lRWNrj7SGyY-LF6REdync";                         // <-- CAMBIAR (anon public key)
+    // === Supabase (pega tus credenciales públicas) ===
+    const SUPABASE_URL  = "https://ynqkncnsqfjtcvvyklvy.supabase.co"; // CAMBIAR
+    const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucWtuY25zcWZqdGN2dnlrbHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDAwMTEsImV4cCI6MjA3MzcxNjAxMX0.YE41Q4eX9UjuocXxF3e2b6lRWNrj7SGyY-LF6REdync";                         // CAMBIAR (anon public key)
 
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-    // ---- Lecturas mínimas ----
     async function _loadJugadores(){
       const { data, error } = await sb.from('jugadores').select('*').order('puntos',{ascending:false});
       if (error) { console.error('jugadores/select', error); return; }
-      if (window.onPlayers) window.onPlayers(data || []);
+      window.onPlayers && window.onPlayers(data || []);
     }
     async function _loadClasificacion(){
-      const tryView = await sb.from('clasificacion').select('*').order('puntos',{ascending:false});
-      if (!tryView.error && Array.isArray(tryView.data)) {
-        window.onRanking && window.onRanking(tryView.data);
-        return;
-      }
-      const js = (await sb.from('jugadores').select('id,nombre,puntos,balance,paid,avatar')).data || [];
+      const v = await sb.from('clasificacion').select('*').order('puntos',{ascending:false});
+      if (!v.error && Array.isArray(v.data)) { window.onRanking && window.onRanking(v.data); return; }
+      const js = (await sb.from('jugadores').select('id,nombre,puntos,balance')).data || [];
       const out = js.map(j=>({ id:j.id, nombre:j.nombre, puntos:Number(j.puntos||0), balance:j.balance||0 }))
                     .sort((a,b)=> b.puntos - a.puntos);
       window.onRanking && window.onRanking(out);
     }
 
-    // ---- Escrituras ----
-    async function _addJugador(nombre, avatar){
-      const { error } = await sb.from('jugadores').insert({ nombre, avatar }).select();
-      if (error) console.error('jugadores/insert', error);
-    }
-    async function _updateJugador(id, patch){
-      const { error } = await sb.from('jugadores').update(patch).eq('id', id);
-      if (error) console.error('jugadores/update', error);
-    }
-    async function _deleteJugador(id){
-      const { error } = await sb.from('jugadores').delete().eq('id', id);
-      if (error) console.error('jugadores/delete', error);
-    }
-    async function _syncPoints(players){
-      try {
-        const ops = players.map(p => sb.from('jugadores').update({ puntos: Number(p.totalPoints||0) }).eq('id', p.id));
-        await Promise.all(ops);
-      } catch(e){ console.error('jugadores/syncPoints', e); }
-    }
+    async function _addJugador(nombre, avatar){ const { error } = await sb.from('jugadores').insert({ nombre, avatar }).select(); if(error) console.error(error); }
+    async function _updateJugador(id, patch){ const { error } = await sb.from('jugadores').update(patch).eq('id', id); if(error) console.error(error); }
+    async function _deleteJugador(id){ const { error } = await sb.from('jugadores').delete().eq('id', id); if(error) console.error(error); }
+    async function _syncPoints(players){ try{ await Promise.all(players.map(p=> sb.from('jugadores').update({ puntos:Number(p.totalPoints||0) }).eq('id', p.id))); }catch(e){ console.error(e);} }
 
-    // ---- Realtime + broadcast + polling ----
     const chDB = sb.channel('db-changes');
-    chDB.on('postgres_changes', { event:'*', schema:'public', table:'jugadores' }, () => refreshAll('[rt jugadores]'));
+    chDB.on('postgres_changes', { event:'*', schema:'public', table:'jugadores' }, ()=> refreshAll('[rt jugadores]'));
     chDB.subscribe();
 
     const ch = sb.channel('poker-2025-2026');
-    ch.on('broadcast', { event:'data-changed' }, () => refreshAll('[broadcast]'));
+    ch.on('broadcast', { event:'data-changed' }, ()=> refreshAll('[broadcast]'));
     ch.subscribe();
-    async function notify(){ try{ await ch.send({ type:'broadcast', event:'data-changed', payload:{} }); } catch(e){} }
+    async function notify(){ try{ await ch.send({ type:'broadcast', event:'data-changed', payload:{} }); }catch(e){} }
 
-    let POLL=null;
-    function startPolling(ms=7000){ if(POLL) clearInterval(POLL); POLL=setInterval(()=>refreshAll('[poll]'), ms); }
-    setTimeout(()=> startPolling(12000), 10000);
+    let POLL=null; function startPolling(ms=7000){ if(POLL) clearInterval(POLL); POLL=setInterval(()=> refreshAll('[poll]'), ms); }
+    setTimeout(()=> startPolling(10000), 10000);
 
-    async function refreshAll(tag=''){
-      console.log('refresh', tag);
-      await Promise.all([_loadJugadores(), _loadClasificacion()]);
-    }
+    async function refreshAll(tag=''){ await Promise.all([_loadJugadores(), _loadClasificacion()]); }
 
-    // ---- API pública para tu React ----
     window.backend = {
-      init({ onPlayers, onRanking }){
-        window.onPlayers = onPlayers;
-        window.onRanking = onRanking;
-        refreshAll('[init]');
-      },
-      addJugador:   async (nombre, avatar)=>{ await _addJugador(nombre, avatar); await notify(); },
-      updateJugador:async (id, patch)=>{ await _updateJugador(id, patch); await notify(); },
-      deleteJugador:async (id)=>{ await _deleteJugador(id); await notify(); },
-      syncPoints:   async (players)=>{ await _syncPoints(players); await notify(); }
+      init({onPlayers,onRanking}){ window.onPlayers=onPlayers; window.onRanking=onRanking; refreshAll('[init]'); },
+      addJugador: async (n,a)=>{ await _addJugador(n,a); await notify(); },
+      updateJugador: async (id,patch)=>{ await _updateJugador(id,patch); await notify(); },
+      deleteJugador: async (id)=>{ await _deleteJugador(id); await notify(); },
+      syncPoints: async (players)=>{ await _syncPoints(players); await notify(); }
     };
     </script>
 
@@ -196,20 +167,20 @@
         );
 
         const PokerDashboard = () => {
-  // === Conectar estado a Supabase (no cambia tu UI) ===
-  const [__init, __setInit] = React.useState(false);
+  // === Supabase init hook (no cambia tu UI) ===
+  const [__inited, __setInited] = React.useState(false);
   React.useEffect(()=>{
-    if(!__init && window.backend){
+    if(!__inited && window.backend){
       window.backend.init({
         onPlayers: (rows)=>{
           const mapped = rows.map(r=>({ id:r.id, name:r.nombre, photo:r.avatar||null, paid:!!r.paid, totalPoints:Number(r.puntos||0), gamesPlayed:0, wins:0 }));
           setPlayers(mapped);
         },
-        onRanking: ()=>{/* tu pestaña usa players, así que no tocamos */}
+        onRanking: ()=>{}
       });
-      __setInit(true);
+      __setInited(true);
     }
-  },[__init]);
+  },[__inited]);
 
           const [activeTab, setActiveTab] = useState('players');
           
@@ -285,27 +256,23 @@
               position: index + 1
             }));
 
-          const addPlayer = async () => {
+          const addPlayer = () => {
   if (newPlayerName.trim() && players.length < 15) {
     await window.backend.addJugador(newPlayerName.trim(), null);
     setNewPlayerName('');
   }
 };
-              setPlayers([...players, newPlayer]);
-              setNewPlayerName('');
-            }
-          };
 
           const editPlayer = (player) => {
             setEditingPlayer({ ...player });
           };
 
-          const savePlayer = async () => {
+          const savePlayer = () => {
   await window.backend.updateJugador(editingPlayer.id, { nombre: editingPlayer.name, avatar: editingPlayer.photo, paid: !!editingPlayer.paid });
   setEditingPlayer(null);
 };
 
-          const deletePlayer = async (id) => {
+          const deletePlayer = (id) => {
   await window.backend.deleteJugador(id);
 };
 
@@ -359,7 +326,7 @@
             }
           };
 
-          const togglePaymentStatus = async (playerId) => {
+          const togglePaymentStatus = (playerId) => {
   const p = players.find(x=>x.id===playerId);
   if(!p) return;
   await window.backend.updateJugador(playerId, { paid: !p.paid });
@@ -433,7 +400,7 @@
               });
               
               setPlayers(updatedPlayers);
-              if (window.backend && window.backend.syncPoints) window.backend.syncPoints(updatedPlayers);
+      if (window.backend && window.backend.syncPoints) window.backend.syncPoints(updatedPlayers);
             }
           };
 
@@ -479,7 +446,7 @@
               });
               
               setPlayers(updatedPlayers);
-              if (window.backend && window.backend.syncPoints) window.backend.syncPoints(updatedPlayers);
+      if (window.backend && window.backend.syncPoints) window.backend.syncPoints(updatedPlayers);
               setFloatingGames(floatingGames.filter(g => g.id !== gameId));
             }
           };
