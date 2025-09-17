@@ -14,55 +14,112 @@
 <style>
         body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
     </style>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script><script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script><script>
-// Firebase initialization (no authentication)
-const firebaseConfig = { 
-  apiKey: "AIzaSyD5VMnoiy4z6nzWG9B3y8zjW5O6dV6suDo",
-  authDomain: "pockerbackend.firebaseapp.com",
-  projectId: "pockerbackend",
-  storageBucket: "pockerbackend.appspot.com",
-  messagingSenderId: "128909977411",
-  appId: "1:128909977411:web:364e9531c09c7ebcee31f6"
-};
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
+// ===== Supabase (Realtime, sin login) =====
+// 1) CREA tu proyecto en https://supabase.com (free tier)
+// 2) Activa Realtime para las tablas en Database -> Replication -> supabase_realtime
+// 3) Pega aquí tus credenciales públicas (anon key) y URL del proyecto
+const SUPABASE_URL  = "https://ynqkncnsqfjtcvvyklvy.supabase.co";
+const SUPABASE_ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlucWtuY25zcWZqdGN2dnlrbHZ5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgxNDAwMTEsImV4cCI6MjA3MzcxNjAxMX0.YE41Q4eX9UjuocXxF3e2b6lRWNrj7SGyY-LF6REdync"; // pública; no es 'login'
 
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
-// Expose Firestore without requiring any authentication
-window.db = firebase.firestore();
-</script><script>
-// --- Firestore real-time + diagnostics ---
-try {
-  firebase.firestore().settings({ experimentalForceLongPolling: true, ignoreUndefinedProperties: true });
-} catch (e) {
-  console.warn('Firestore settings already applied or not supported:', e);
-}
+// Tablas sugeridas: jugadores, partidas, resultados (SQL incluido en el mensaje)
+// Renderizadores opcionales si ya existen en tu app: renderJugadores, renderPartidas, renderClasificacion.
 
-window.subscribeCollection = (colPath, orderBy) => {
-  let ref = firebase.firestore().collection(colPath);
-  if (orderBy && orderBy.field) {
-    ref = ref.orderBy(orderBy.field, orderBy.dir || 'asc');
+async function loadJugadores() {
+  const { data, error } = await client.from('jugadores').select('*').order('puntos', { ascending: false });
+  if (error) return console.error('jugadores/select', error);
+  if (typeof window.renderJugadores === 'function') {
+    window.renderJugadores(data || []);
+  } else {
+    console.log('[Jugadores]', data);
   }
-  return ref.onSnapshot((snap) => {
-    const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    console.log(`[onSnapshot] ${colPath}`, rows);
-  }, (err) => {
-    console.error(`[onSnapshot][ERROR] ${colPath}`, err);
+}
+async function loadPartidas() {
+  const { data, error } = await client.from('partidas').select('*, resultados(*)').order('fecha', { ascending: false });
+  if (error) return console.error('partidas/select', error);
+  if (typeof window.renderPartidas === 'function') {
+    window.renderPartidas(data || []);
+  } else {
+    console.log('[Partidas]', data);
+  }
+}
+async function loadClasificacion() {
+  // Si creas una vista 'clasificacion' con totales de puntos:
+  const { data, error } = await client.from('jugadores').select('id,nombre,puntos,balance').order('puntos', { ascending: false });
+  if (error) return console.error('clasificacion/select', error);
+  if (typeof window.renderClasificacion === 'function') {
+    window.renderClasificacion(data || []);
+  } else {
+    console.log('[Clasificacion]', data);
+  }
+}
+
+// Crear/actualizar
+async function addJugador(nombre, avatar) {
+  const { data, error } = await client.from('jugadores').insert({ nombre, avatar }).select().single();
+  if (error) return console.error('jugadores/insert', error);
+  return data;
+}
+async function addPartida(payload) {
+  // payload: { fecha, buy_in, notas }
+  const { data, error } = await client.from('partidas').insert(payload).select().single();
+  if (error) return console.error('partidas/insert', error);
+  return data;
+}
+async function addResultado(partida_id, jugador_id, posicion, puntos, premio) {
+  const { data, error } = await client.from('resultados').insert({ partida_id, jugador_id, posicion, puntos, premio }).select().single();
+  if (error) return console.error('resultados/insert', error);
+  return data;
+}
+
+// Realtime (push entre dispositivos)
+function subscribeRealtime() {
+  const ch = client.channel('db-changes');
+
+  ch.on('postgres_changes', { event: '*', schema: 'public', table: 'jugadores' }, () => {
+    console.log('[Realtime] jugadores cambio'); loadJugadores(); loadClasificacion();
   });
+  ch.on('postgres_changes', { event: '*', schema: 'public', table: 'partidas' }, () => {
+    console.log('[Realtime] partidas cambio'); loadPartidas();
+  });
+  ch.on('postgres_changes', { event: '*', schema: 'public', table: 'resultados' }, () => {
+    console.log('[Realtime] resultados cambio'); loadClasificacion(); loadPartidas();
+  });
+
+  ch.subscribe((status) => console.log('[Realtime] status:', status));
+}
+
+// Fallback a polling por si Realtime estuviera bloqueado
+let POLL_ID = null;
+function startPolling(ms = 5000) {
+  if (POLL_ID) clearInterval(POLL_ID);
+  POLL_ID = setInterval(() => { loadJugadores(); loadPartidas(); loadClasificacion(); }, ms);
+}
+
+window.initSupabaseBackend = async function initSupabaseBackend() {
+  try {
+    await loadJugadores(); await loadPartidas(); await loadClasificacion();
+    subscribeRealtime();
+    // Si en 10s no llega "SUBSCRIBED", usamos polling
+    setTimeout(() => {
+      // Heurística mínima
+      // Nota: si quieres forzar polling siempre, llama startPolling(3000)
+      startPolling(8000);
+    }, 10000);
+  } catch (e) {
+    console.error('initSupabaseBackend', e);
+    startPolling(8000);
+  }
 };
 
-window.ping = async () => {
-  const t = Date.now();
-  await firebase.firestore().collection('debug').doc('ping').set({ t });
-  console.log('Ping written at', new Date(t).toISOString());
-};
-
-firebase.firestore().collection('debug').doc('ping').onSnapshot((doc) => {
-  console.log('[onSnapshot] debug/ping ->', doc.exists ? doc.data() : null);
+// auto-init si estás en producción
+document.addEventListener('DOMContentLoaded', () => {
+  if (SUPABASE_URL.includes('supabase.co')) {
+    window.initSupabaseBackend();
+  }
 });
-
-console.log('Firebase projectId:', firebase.app().options.projectId);
 </script></head>
 <body>
 <div id="root"></div>
